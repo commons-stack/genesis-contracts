@@ -1,0 +1,31 @@
+{
+  "name": "@giveth/commons-abc-contracts",
+  "version": "0.2.0",
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "concurrently": "^4.1.0",
+    "dotenv": "^7.0.0",
+    "ganache-cli": "^6.4.2",
+    "openzeppelin-eth": "^2.0.2",
+    "openzeppelin-test-helpers": "^0.3.2",
+    "solhint": "^2.0.0",
+    "truffle": "^5.0.12",
+    "truffle-hdwallet-provider": "^1.0.6",
+    "truffle-privatekey-provider": "^1.1.0",
+    "wait-on": "^3.2.0",
+    "web3": "^1.0.0-beta.52",
+    "zos-lib": "^2.0.1"
+  },
+  "scripts": {
+    "start": "concurrently 'npm:ganache' 'npm:deploy'",
+    "ganache": "mkdir -p .chain && ganache-cli -p 8545 -d -i 5777 --gasLimit 7000000000000 --gasPrice 1 --acctKeys ./.chain/ganache-accounts.json -m 'ivory sibling about kiwi grant sunset beauty solar cup fame south girl'",
+    "deploy": "wait-on tcp:8545 && truffle migrate --compile-all --reset --network development",
+    "compile": "truffle compile",
+    "test": "wait-on tcp:8545 && truffle test",
+    "lint": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
+    "ci": "concurrently 'npm:ganache' 'npm:test'"
+  },
+  "dependencies": {
+    "openzeppelin-solidity": "^2.2.0"
+  }
+}
