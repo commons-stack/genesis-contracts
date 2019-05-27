@@ -1,34 +1,58 @@
 require("dotenv").config();
 
-const PrivateKeyProvider = require("truffle-privatekey-provider");
-const HDWalletProvider = require("truffle-hdwallet-provider");
-const mnemonic =
-  "hope awesome inherit detect employ busy popular clip olive fork better glare";
+const HDWalletProvider = require('truffle-hdwallet-provider')
+
+const SolcStableVersion = '0.5.7'
 
 module.exports = {
   networks: {
+    //
+    // Local networks:
+    //
+
+    // Local development (default):
     development: {
       host: "127.0.0.1",
       port: 8545,
       network_id: "*"
     },
+
+    // Local test (default):
     test: {
       host: "127.0.0.1",
       port: 7545,
       network_id: "*"
     },
+
+    //
+    // Test networks:
+    //
+
+    // Ethereum Rinkeby testnet:
     rinkeby: {
       provider: () =>
-      new PrivateKeyProvider(
-        process.env.RINKEBY_KEY,
-        `https://rinkeby.infura.io/${process.env.INFURA_KEY}`
-      ),
+        new HDWalletProvider(
+          process.env.RINKEBY_MNEMONIC,
+          `https://rinkeby.infura.io/${process.env.INFURA_KEY}`
+        ),
       network_id: 15
+    },
+
+    // PoA Sokol testnet:
+    sokol: {
+      provider: () =>
+        new HDWalletProvider(
+          process.env.SOKOL_MNEMONIC,
+          "https://sokol.poa.network"
+        ),
+      network_id: 77,
+      gas: 500000,
+      gasPrice: 1000000000
     }
   },
   compilers: {
     solc: {
-      version: '0.5.2',
+      version: SolcStableVersion,
       optimizer: {
         enabled: true, // Default: false
         runs: 1000     // Default: 200
