@@ -1,6 +1,6 @@
 // ReserveTokenMock will be an existing smart contract (DAI)
-const ExternalTokenMock = artifacts.require("ERC20Mintable");
-const CommonsToken = artifacts.require("CommonsToken");
+const WPHT = artifacts.require("WPHT");
+const ArtistToken = artifacts.require("ArtistToken");
 const FundingPoolMock = artifacts.require("FundingPoolMock");
 
 // Curve parameters:
@@ -20,11 +20,12 @@ module.exports = async function(deployer, networks, accounts) {
   await deployer.deploy(FundingPoolMock);
   FundingPoolMockInstance = await FundingPoolMock.deployed();
 
-  await deployer.deploy(ExternalTokenMock, accounts[0]);
-  ExternalTokenMockInstance = await ExternalTokenMock.deployed();
+  await deployer.deploy(WPHT, accounts[0]);
+  const wPHT = await WPHT.deployed();
 
-  await deployer.deploy(CommonsToken,
-    ExternalTokenMock.address, // _externalToken
+  await deployer.deploy(
+    ArtistToken,
+    wPHT.address, // _externalToken
     reserveRatio,                     // _reserveRatio
     gasPrice,                         // _gasPrice
     theta,                            // _theta
@@ -36,7 +37,4 @@ module.exports = async function(deployer, networks, accounts) {
     minExternalContibution,           // _minExternalContribution
     { gas: 20000000 }
   );
-
-  // needed for demonstration purposes => to show we can purchase tokens during the hatchin phase
-  await ExternalTokenMockInstance.mint(accounts[0], 100000, {from: accounts[0]})
 };

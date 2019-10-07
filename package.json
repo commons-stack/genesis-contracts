@@ -18,7 +18,7 @@
   },
   "scripts": {
     "start": "concurrently 'npm:ganache' 'npm:deploy'",
-    "ganache": "mkdir -p .chain && ganache-cli -p 8545 -d -i 5777 --gasLimit 7000000000000 --gasPrice 1 --acctKeys ./.chain/ganache-accounts.json -m 'ivory sibling about kiwi grant sunset beauty solar cup fame south girl'",
+    "ganache": "mkdir -p .chain && ganache-cli -p 8545 -d -i 5777 -e 100000000 --gasLimit 7000000000000 --gasPrice 1 --acctKeys ./.chain/ganache-accounts.json -m 'ivory sibling about kiwi grant sunset beauty solar cup fame south girl'",
     "deploy": "wait-on tcp:8545 && truffle migrate --compile-all --reset --network development",
     "compile": "truffle compile",
     "test": "wait-on tcp:8545 && truffle test",
