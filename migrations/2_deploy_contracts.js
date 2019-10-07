@@ -25,6 +25,8 @@ module.exports = async function(deployer, networks, accounts) {
 
   await deployer.deploy(
     ArtistToken,
+    "Armin Van Lightstreams",
+    "AVL",
     wPHT.address, // _externalToken
     reserveRatio,                     // _reserveRatio
     gasPrice,                         // _gasPrice

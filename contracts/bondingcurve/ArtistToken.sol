@@ -3,7 +3,12 @@ pragma solidity ^0.5.0;
 import "./CommonsToken.sol";
 
 contract ArtistToken is CommonsToken {
+    string public name;   // e.g: Armin Van Lightstreams
+    string public symbol; // e.g: AVL
+
     constructor (
+        string memory _name,
+        string memory _symbol,
         address _externalToken,
         uint32 _reserveRatio,
         uint256 _gasPrice,
@@ -27,6 +32,7 @@ contract ArtistToken is CommonsToken {
         _duration,
         _minExternalContribution
     ) {
-
+        name = _name;
+        symbol = _symbol;
     }
 }
