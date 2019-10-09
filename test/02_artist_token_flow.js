@@ -6,16 +6,20 @@
 
 const { BN, constants, expectEvent, shouldFail, ether } = require('openzeppelin-test-helpers');
 
-const toPHTs = (value) => {
+const pht2wei = (value) => {
   return ether(value.toString());
 };
+
+function wei2pht (n) {
+  return web3.utils.fromWei(n, 'ether');
+}
 
 const FundingPoolMock = artifacts.require("FundingPoolMock.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
 const DENOMINATOR_PPM = 1000000;
-contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
+contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -31,14 +35,14 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
   const INSUFFICIENT_AMOUNT_TO_RAISE_PHT = AMOUNT_TO_RAISE_PHT / 100;
   const INSUFFICIENT_CONTRIBUTION_PHT = MIN_REQUIRED_HATCHER_CONTRIBUTION_PHT - 1;
 
-  const PER_HATCHER_CONTRIBUTION_WEI = toPHTs(PER_HATCHER_CONTRIBUTION_PHT);
-  const BUYER_WPHT_BALANCE_WEI = toPHTs(BUYER_WPHT_BALANCE_PHT);
-  const INIT_HATCHER_WPHT_BALANCE_WEI = toPHTs(INIT_HATCHER_WPHT_BALANCE_PHT);
-  const AMOUNT_TO_RAISE_WEI = toPHTs(AMOUNT_TO_RAISE_PHT);
-  const MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI = toPHTs(MIN_REQUIRED_HATCHER_CONTRIBUTION_PHT);
-  const EXCEEDED_AMOUNT_TO_RAISE_WEI = toPHTs(EXCEEDED_AMOUNT_TO_RAISE_PHT);
-  const INSUFFICIENT_AMOUNT_TO_RAISE_WEI = toPHTs(INSUFFICIENT_AMOUNT_TO_RAISE_PHT);
-  const INSUFFICIENT_CONTRIBUTION_WEI = toPHTs(INSUFFICIENT_CONTRIBUTION_PHT);
+  const PER_HATCHER_CONTRIBUTION_WEI = pht2wei(PER_HATCHER_CONTRIBUTION_PHT);
+  const BUYER_WPHT_BALANCE_WEI = pht2wei(BUYER_WPHT_BALANCE_PHT);
+  const INIT_HATCHER_WPHT_BALANCE_WEI = pht2wei(INIT_HATCHER_WPHT_BALANCE_PHT);
+  const AMOUNT_TO_RAISE_WEI = pht2wei(AMOUNT_TO_RAISE_PHT);
+  const MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI = pht2wei(MIN_REQUIRED_HATCHER_CONTRIBUTION_PHT);
+  const EXCEEDED_AMOUNT_TO_RAISE_WEI = pht2wei(EXCEEDED_AMOUNT_TO_RAISE_PHT);
+  const INSUFFICIENT_AMOUNT_TO_RAISE_WEI = pht2wei(INSUFFICIENT_AMOUNT_TO_RAISE_PHT);
+  const INSUFFICIENT_CONTRIBUTION_WEI = pht2wei(INSUFFICIENT_CONTRIBUTION_PHT);
 
   const RESERVE_RATIO = 142857; // kappa ~ 6
   const THETA = 350000; // 35% in ppm
@@ -69,6 +73,8 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
       MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI,
       { gas: 10000000 }
     );
+
+    await fundingPool.setArtistToken(artistToken.address);
   });
 
   it("Should have Hatchers with positive wPHT(PHT20) balances ready", async () => {
@@ -100,7 +106,7 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     await artistToken.hatchContribute(PER_HATCHER_CONTRIBUTION_WEI, {from: hatcher1});
     let isHatched = await artistToken.isHatched();
 
-    console.log(`Hatcher1 contributed: ${PER_HATCHER_CONTRIBUTION_WEI} WPHT`);
+    console.log(`Hatcher1 contributed: ${wei2pht(PER_HATCHER_CONTRIBUTION_WEI)} WPHT`);
 
     assert.isFalse(isHatched);
 
@@ -108,7 +114,7 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     await artistToken.hatchContribute(PER_HATCHER_CONTRIBUTION_WEI, {from: hatcher2});
     isHatched = await artistToken.isHatched();
 
-    console.log(`Hatcher2 contributed: ${PER_HATCHER_CONTRIBUTION_WEI} WPHT`);
+    console.log(`Hatcher2 contributed: ${wei2pht(PER_HATCHER_CONTRIBUTION_WEI)} WPHT`);
 
     assert.isTrue(isHatched);
   });
@@ -122,9 +128,9 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
   it('should query WPHT and ensure ArtistToken has received the raised amount in WPHTs minus protocol thetas', async () => {
     const poolBalance = await artistToken.poolBalance();
     const WPHTsBalance = await wPHT.balanceOf(artistToken.address);
-    const WPHTsBalanceExpected = toPHTs((DENOMINATOR_PPM - THETA) * AMOUNT_TO_RAISE_PHT / DENOMINATOR_PPM);
+    const WPHTsBalanceExpected = pht2wei((DENOMINATOR_PPM - THETA) * AMOUNT_TO_RAISE_PHT / DENOMINATOR_PPM);
 
-    console.log(`ArtistToken received: ${WPHTsBalance} WPHT`);
+    console.log(`ArtistToken received: ${wei2pht(WPHTsBalance)} WPHT`);
 
     assert.equal(WPHTsBalance.toString(), WPHTsBalanceExpected.toString());
     assert.equal(poolBalance.toString(), WPHTsBalanceExpected.toString());
@@ -132,9 +138,9 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
 
   it('should query WPHT and ensure FundingPool has received its calculated ratio', async () => {
     const WPHTsBalance = await wPHT.balanceOf(fundingPool.address);
-    const WPHTsBalanceExpected = toPHTs(AMOUNT_TO_RAISE_PHT * THETA  / DENOMINATOR_PPM);
+    const WPHTsBalanceExpected = pht2wei(AMOUNT_TO_RAISE_PHT * THETA  / DENOMINATOR_PPM);
 
-    console.log(`FundingPool received: ${WPHTsBalance} WPHT`);
+    console.log(`FundingPool received: ${wei2pht(WPHTsBalance)} WPHT`);
 
     assert.equal(WPHTsBalance.toString(), WPHTsBalanceExpected.toString());
   });
@@ -142,9 +148,9 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
   it('should create a reserve of Artist tokens', async () => {
     artistTokenSymbol = await artistToken.symbol.call();
     const tokensAmount = await artistToken.balanceOf(artistToken.address);
-    const tokensAmountExpected = toPHTs((AMOUNT_TO_RAISE_PHT / P0 ) * (1 - (THETA  / DENOMINATOR_PPM)));
+    const tokensAmountExpected = pht2wei((AMOUNT_TO_RAISE_PHT / P0 ) * (1 - (THETA  / DENOMINATOR_PPM)));
 
-    console.log(`Artist tokens in reserve: ${tokensAmount} ${artistTokenSymbol}`);
+    console.log(`Artist tokens in reserve: ${wei2pht(tokensAmount)} ${artistTokenSymbol}`);
 
     assert.equal(tokensAmount.toString(), tokensAmountExpected.toString());
   });
@@ -153,7 +159,7 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     const totalSupply = await artistToken.totalSupply();
     const totalSupplyExpected = await artistToken.balanceOf(artistToken.address);
 
-    console.log(`ArtistToken total supply: ${totalSupply} ${artistTokenSymbol}`);
+    console.log(`ArtistToken total supply: ${wei2pht(totalSupply)} ${artistTokenSymbol}`);
 
     assert.equal(totalSupply.toString(), totalSupplyExpected.toString());
   });
@@ -162,18 +168,18 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     const contribution = await artistToken.initialContributions(hatcher1);
     const lockedInternal = contribution.lockedInternal;
     const paidExternal = contribution.paidExternal;
-    const lockedInternalExpected = toPHTs(PER_HATCHER_CONTRIBUTION_PHT * P0);
+    const lockedInternalExpected = pht2wei(PER_HATCHER_CONTRIBUTION_PHT * P0);
 
-    console.log(`Hatcher1 contribution of internal locked artist tokens: ${lockedInternal} ${artistTokenSymbol}`);
-    console.log(`Hatcher1 contribution of external paid tokens: ${paidExternal} WPHT`);
+    console.log(`Hatcher1 contribution of internal locked artist tokens: ${wei2pht(lockedInternal)} ${artistTokenSymbol}`);
+    console.log(`Hatcher1 contribution of external paid tokens: ${wei2pht(paidExternal)} WPHT`);
 
     const contribution2 = await artistToken.initialContributions(hatcher2);
     const lockedInternal2 = contribution2.lockedInternal;
     const paidExternal2 = contribution.paidExternal;
-    const lockedInternalExpected2 = toPHTs(PER_HATCHER_CONTRIBUTION_PHT * P0);
+    const lockedInternalExpected2 = pht2wei(PER_HATCHER_CONTRIBUTION_PHT * P0);
 
-    console.log(`Hatcher2 contribution of internal locked artist tokens: ${lockedInternal2} ${artistTokenSymbol}`);
-    console.log(`Hatcher2 contribution of external paid tokens: ${paidExternal2} WPHT`);
+    console.log(`Hatcher2 contribution of internal locked artist tokens: ${wei2pht(lockedInternal2)} ${artistTokenSymbol}`);
+    console.log(`Hatcher2 contribution of external paid tokens: ${wei2pht(paidExternal2)} WPHT`);
 
     assert.equal(lockedInternal.toString(), lockedInternalExpected.toString());
     assert.equal(lockedInternal2.toString(), lockedInternalExpected2.toString());
@@ -183,14 +189,16 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
   });
 
   it('should validate a hatcher has 0 claimed tokens and 0 artist tokens in their direct balance prior first purchases from public (all initial tokens are locked)', async () => {
+    await artistToken.claimTokens({from: hatcher1});
+
     let balance = await artistToken.balanceOf(hatcher1);
 
-    console.log(`Hatcher1 has prior-minting/claiming balance of: ${balance.toString()} ${artistTokenSymbol}`);
+    console.log(`Hatcher1 has prior-minting/claiming balance of: ${wei2pht(balance)} ${artistTokenSymbol}`);
 
     assert.equal(balance.toString(), "0");
   });
 
-  it('should let average buyer1 to purchase WPHT tokens in order to be able to exchange them for artist tokens afterwards', async () => {
+  it('should let a buyer1, an average Joe, to purchase WPHT tokens in order to be able to exchange them for artist tokens afterwards', async () => {
     await wPHT.deposit({
       from: buyer1,
       value: BUYER_WPHT_BALANCE_WEI
@@ -212,11 +220,11 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     const postArtistTokenTotalSupplyExpected = preArtistTokenTotalSupply.add(purchasedTokensAmountExpected);
 
     console.log(`Prior-buying:`);
-    console.log(` - FundingPool balance: ${preFundingPoolWPHTBalance.toString()} WPHT`);
-    console.log(` - ArtistToken external balance: ${preArtistTokenWPHTBalance.toString()} WPHT`);
-    console.log(` - ArtistToken total supply: ${preArtistTokenTotalSupply.toString()} ${artistTokenSymbol}`);
-    console.log(` - Buyer1 purchase cost: ${BUYER_WPHT_BALANCE_WEI.toString()} WPHT`);
-    console.log(` - Buyer1 has: ${preBuyer1ArtistTokensBalance.toString()} ${artistTokenSymbol}`);
+    console.log(` - FundingPool balance: ${wei2pht(preFundingPoolWPHTBalance)} WPHT`);
+    console.log(` - ArtistToken external balance: ${wei2pht(preArtistTokenWPHTBalance)} WPHT`);
+    console.log(` - ArtistToken total supply: ${wei2pht(preArtistTokenTotalSupply)} ${artistTokenSymbol}`);
+    console.log(` - Buyer1 purchase cost: ${wei2pht(BUYER_WPHT_BALANCE_WEI)} WPHT`);
+    console.log(` - Buyer1 has: ${wei2pht(preBuyer1ArtistTokensBalance)} ${artistTokenSymbol}`);
 
     await wPHT.approve(artistToken.address, BUYER_WPHT_BALANCE_WEI, {from: buyer1});
     await artistToken.mint(BUYER_WPHT_BALANCE_WEI, {from: buyer1, gasPrice: GAS_PRICE_WEI});
@@ -227,10 +235,10 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     postBuyer1ArtistTokensBalance = await artistToken.balanceOf(buyer1);
 
     console.log(`Post-buying:`);
-    console.log(` - FundingPool balance: ${postFundingPoolWPHTBalance.toString()} WPHT`);
-    console.log(` - ArtistToken external balance: ${postArtistTokenWPHTBalance.toString()} WPHT`);
-    console.log(` - ArtistToken total supply: ${postArtistTokenTotalSupply.toString()} ${artistTokenSymbol}`);
-    console.log(` - Buyer1 has: ${postBuyer1ArtistTokensBalance.toString()} ${artistTokenSymbol}`);
+    console.log(` - FundingPool balance: ${wei2pht(postFundingPoolWPHTBalance)} WPHT`);
+    console.log(` - ArtistToken external balance: ${wei2pht(postArtistTokenWPHTBalance)} WPHT`);
+    console.log(` - ArtistToken total supply: ${wei2pht(postArtistTokenTotalSupply)} ${artistTokenSymbol}`);
+    console.log(` - Buyer1 has: ${wei2pht(postBuyer1ArtistTokensBalance)} ${artistTokenSymbol}`);
 
     assert.equal(preFundingPoolWPHTBalance.toString(), postFundingPoolWPHTBalance.toString());
     assert.equal(postArtistTokenWPHTBalance.toString(), postArtistTokenWPHTBalanceExpected.toString());
@@ -252,10 +260,8 @@ contract("ArtistTokenPurchases", ([hatcher1, hatcher2, buyer1, buyer2]) => {
 
     const buyer2ArtistTokensBalance = await artistToken.balanceOf(buyer2);
 
-    console.log(`Buyer2 purchased ${buyer2ArtistTokensBalance.toString()} ${artistTokenSymbol} with the same purchase cost as Buyer1`);
+    console.log(`Buyer2 purchased only ${wei2pht(buyer2ArtistTokensBalance).toString()} ${artistTokenSymbol} with the same purchase cost as Buyer1`);
 
     assert.isTrue(buyer2ArtistTokensBalance.lt(postBuyer1ArtistTokensBalance));
   });
-
-  // TODO: check that this action unlocks some hatchers tokens
 });

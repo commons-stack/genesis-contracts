@@ -1,17 +1,16 @@
 pragma solidity ^0.5.0;
 
-import "./CommonsToken.sol";
+import "./ArtistToken.sol";
 
 contract FundingPoolMock {
+  ArtistToken artistToken;
 
-  CommonsToken commonsToken;
-
-  function setCommonsToken(address _commonsToken) public {
-    commonsToken = CommonsToken(_commonsToken);
+  function setArtistToken(address _artistToken) public {
+    artistToken = ArtistToken(_artistToken);
   }
 
   function allocateFunds(address to, uint256 value) public {
-    commonsToken.fundsAllocated(value);
-    commonsToken.transfer(to, value);
+    artistToken.fundsAllocated(value);
+    artistToken.transfer(to, value);
   }
 }
