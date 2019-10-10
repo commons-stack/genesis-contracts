@@ -1,6 +1,6 @@
 const { BN, constants, expectEvent, shouldFail, ether } = require('openzeppelin-test-helpers');
 
-const toPHTs = (value) => {
+const pht2wei = (value) => {
   return ether(value.toString());
 };
 
@@ -21,12 +21,12 @@ contract("ArtistToken", ([hatcher1, hatcher2, lateInvestor]) => {
   const INSUFFICIENT_AMOUNT_TO_RAISE_PHT = AMOUNT_TO_RAISE_PHT / 100;
   const INSUFFICIENT_CONTRIBUTION_PHT = MIN_REQUIRED_HATCHER_CONTRIBUTION_PHT - 1;
 
-  const INIT_HATCHER_WPHT_BALANCE_WEI = toPHTs(INIT_HATCHER_WPHT_BALANCE_PHT);
-  const AMOUNT_TO_RAISE_WEI = toPHTs(AMOUNT_TO_RAISE_PHT);
-  const MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI = toPHTs(MIN_REQUIRED_HATCHER_CONTRIBUTION_PHT);
-  const EXCEEDED_AMOUNT_TO_RAISE_WEI = toPHTs(EXCEEDED_AMOUNT_TO_RAISE_PHT);
-  const INSUFFICIENT_AMOUNT_TO_RAISE_WEI = toPHTs(INSUFFICIENT_AMOUNT_TO_RAISE_PHT);
-  const INSUFFICIENT_CONTRIBUTION_WEI = toPHTs(INSUFFICIENT_CONTRIBUTION_PHT);
+  const INIT_HATCHER_WPHT_BALANCE_WEI = pht2wei(INIT_HATCHER_WPHT_BALANCE_PHT);
+  const AMOUNT_TO_RAISE_WEI = pht2wei(AMOUNT_TO_RAISE_PHT);
+  const MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI = pht2wei(MIN_REQUIRED_HATCHER_CONTRIBUTION_PHT);
+  const EXCEEDED_AMOUNT_TO_RAISE_WEI = pht2wei(EXCEEDED_AMOUNT_TO_RAISE_PHT);
+  const INSUFFICIENT_AMOUNT_TO_RAISE_WEI = pht2wei(INSUFFICIENT_AMOUNT_TO_RAISE_PHT);
+  const INSUFFICIENT_CONTRIBUTION_WEI = pht2wei(INSUFFICIENT_CONTRIBUTION_PHT);
 
   const RESERVE_RATIO = 142857; // kappa ~ 6
   const THETA = 350000; // 35% in ppm
@@ -148,7 +148,7 @@ contract("ArtistToken", ([hatcher1, hatcher2, lateInvestor]) => {
           })
 
           it("Should have allocated the external tokens to the bonding curve", async function() {
-            let expectedAmountOfExternalTokens = toPHTs((DENOMINATOR_PPM - THETA) * AMOUNT_TO_RAISE_PHT / DENOMINATOR_PPM)
+            let expectedAmountOfExternalTokens = pht2wei((DENOMINATOR_PPM - THETA) * AMOUNT_TO_RAISE_PHT / DENOMINATOR_PPM)
             let externalTokensOwned = await wPHT.balanceOf(artistToken.address);
             assert.equal(externalTokensOwned.toString(), expectedAmountOfExternalTokens.toString());
           })
@@ -161,12 +161,12 @@ contract("ArtistToken", ([hatcher1, hatcher2, lateInvestor]) => {
 
           it("Should have send the correct amount of external tokens to the fundingPool", async function() {
             let externalTokensInFundingPool = await wPHT.balanceOf(fundingPool.address);
-            assert.equal(externalTokensInFundingPool.toString(), toPHTs(AMOUNT_TO_RAISE_PHT * THETA  / DENOMINATOR_PPM).toString());
+            assert.equal(externalTokensInFundingPool.toString(), pht2wei(AMOUNT_TO_RAISE_PHT * THETA  / DENOMINATOR_PPM).toString());
           })
 
           it("Should have minted the correct amount to the bonding curve contract", async function() {
             let internalTokensInBondingCurve = await artistToken.balanceOf(artistToken.address);
-            assert.equal(internalTokensInBondingCurve.toString(), toPHTs((AMOUNT_TO_RAISE_PHT / P0 ) * (1 - (THETA  / DENOMINATOR_PPM))).toString());
+            assert.equal(internalTokensInBondingCurve.toString(), pht2wei((AMOUNT_TO_RAISE_PHT / P0 ) * (1 - (THETA  / DENOMINATOR_PPM))).toString());
           })
 
           it("Should have ended the hatching phase", async function() {
