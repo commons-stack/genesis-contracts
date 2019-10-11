@@ -5,8 +5,8 @@ import "./vendor/BancorFormula.sol";
 
 /**
  * @title Bonding Curve
- * @dev Bonding curve contract based on Bacor formula
- * inspired by bancor protocol and simondlr
+ * @dev Source: https://github.com/commons-stack/genesis-contracts/tree/master/contracts/bondingcurve
+ * @dev Bonding curve contract based on Bacor formula inspired by bancor protocol and simondlr
  * https://github.com/bancorprotocol/contracts
  * https://github.com/ConsenSys/curationmarkets/blob/master/CurationMarkets.sol
  */

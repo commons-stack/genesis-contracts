@@ -2,12 +2,12 @@ pragma solidity ^0.5.0;
 
 import "./BondingCurveToken.sol";
 
-
 /**
  * @title CommonsToken
  * @author Rinke Hendriksen (@eknir) and Pavle Batuta (@flooffieban), during the Oddyssey hackathon in Groningen '19 (part of team: Giveth - Crowdfunding the commons)
  * @notice This smart contract implements the augmented bonding curve design principle (described here: https://medium.com/@abbey_titcomb/3f1f7c1fa751
- * @dev we use the BancorFormule to define the slope of the curve, an ERC20 to model the internal token (minted by the bonding curve) and an ERC20 to model the external (stable currency) token
+ * @dev We use the BancorFormule to define the slope of the curve, an ERC20 to model the internal token (minted by the bonding curve) and an ERC20 to model the external (stable currency) token
+ * @dev Source: https://github.com/commons-stack/genesis-contracts/tree/master/contracts/bondingcurve
  */
 contract CommonsToken is BondingCurveToken {
 
