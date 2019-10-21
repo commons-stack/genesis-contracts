@@ -15,7 +15,7 @@ const minExternalContibution = 100000;
 
 module.exports = async function(deployer, networks, accounts) {
   await deployer.deploy(FundingPoolMock);
-  FundingPoolMockInstance = await FundingPoolMock.deployed();
+  const fundingPoolMockInstance = await FundingPoolMock.deployed();
 
   await deployer.deploy(WPHT, accounts[0]);
   const wPHT = await WPHT.deployed();
@@ -30,7 +30,7 @@ module.exports = async function(deployer, networks, accounts) {
     theta,
     p0,
     initialRaise,
-    FundingPoolMockInstance.address,
+    fundingPoolMockInstance.address,
     friction,
     duration,
     minExternalContibution,
