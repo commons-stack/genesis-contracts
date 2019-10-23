@@ -283,6 +283,9 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     const postBuyer1ArtistTokensBalanceExpected = postBuyer1ArtistTokensBalance.sub(burnAmount);
     const postBuyer1MinimumWPHTBalanceExpected = pht2wei(BUYER_WPHT_PURCHASE_COST_PHT / 10);
     postBuyer1ArtistTokensBalance = await artistToken.balanceOf(buyer1);
+    const reimbursement = await artistToken.calculateSaleReturn(preArtistTokenTotalSupply, preArtistTokenWPHTBalance, RESERVE_RATIO, burnAmount);
+    const fundingPoolWPHTFrictionExpected = reimbursement.mul(new BN(FRICTION, 10)).div(new BN(DENOMINATOR_PPM, 10));
+    const postFundingPoolWPHTBalanceExpected = preFundingPoolWPHTBalance.add(fundingPoolWPHTFrictionExpected);
 
     console.log(`Pre-burning:`);
     console.log(` - FundingPool balance: ${wei2pht(preFundingPoolWPHTBalance)} WPHT`);
@@ -303,6 +306,7 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     assert.equal(postArtistTokenTotalSupply.toString(), postArtistTokenTotalSupplyExpected.toString());
     assert.equal(postBuyer1ArtistTokensBalance.toString(), postBuyer1ArtistTokensBalanceExpected.toString());
 
+    assert.equal(postFundingPoolWPHTBalance.toString(), postFundingPoolWPHTBalanceExpected.toString());
     assert.isTrue(postBuyer1MinimumWPHTBalanceExpected.lt(postBuyer1WPHTBalance, 'selling 33% of all buyer tokens should be worth at least 10% of his purchase cost'));
     assert.isTrue(postFundingPoolWPHTBalance.gt(preFundingPoolWPHTBalance), 'funding pool balance should increase when burning tokens');
   });
