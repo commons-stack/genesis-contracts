@@ -74,6 +74,8 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
       { gas: 10000000 }
     );
 
+    artistTokenSymbol = await artistToken.symbol.call();
+
     await fundingPool.setArtistToken(artistToken.address);
   });
 
@@ -140,13 +142,15 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     const WPHTsBalance = await wPHT.balanceOf(fundingPool.address);
     const WPHTsBalanceExpected = pht2wei(AMOUNT_TO_RAISE_PHT * THETA  / DENOMINATOR_PPM);
 
+    const tokensBalance = await artistToken.balanceOf(fundingPool.address);
+
     console.log(`FundingPool received: ${wei2pht(WPHTsBalance)} WPHT`);
+    console.log(`FundingPool received: ${wei2pht(tokensBalance)} ${artistTokenSymbol}`);
 
     assert.equal(WPHTsBalance.toString(), WPHTsBalanceExpected.toString());
   });
 
   it('should create a reserve of Artist tokens', async () => {
-    artistTokenSymbol = await artistToken.symbol.call();
     const tokensAmount = await artistToken.balanceOf(artistToken.address);
     const tokensAmountExpected = pht2wei((AMOUNT_TO_RAISE_PHT / P0 ) * (1 - (THETA  / DENOMINATOR_PPM)));
 
@@ -309,5 +313,38 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     assert.equal(postFundingPoolWPHTBalance.toString(), postFundingPoolWPHTBalanceExpected.toString());
     assert.isTrue(postBuyer1MinimumWPHTBalanceExpected.lt(postBuyer1WPHTBalance, 'selling 33% of all buyer tokens should be worth at least 10% of his purchase cost'));
     assert.isTrue(postFundingPoolWPHTBalance.gt(preFundingPoolWPHTBalance), 'funding pool balance should increase when burning tokens');
+  });
+
+  it('should be possible to unlock hatched tokens from funding pool', async () => {
+    await fundingPool.allocateFunds(hatcher1, pht2wei('1'), {from: hatcher1});
+  });
+
+  it('should let a hatcher to claim his artist tokens after first round of buyers in post-hatch phase', async () => {
+    const preClaimContribution = await artistToken.initialContributions(hatcher1);
+    const preClaimLockedInternal = preClaimContribution.lockedInternal;
+    const preClaimLockedInternalExpected = pht2wei(PER_HATCHER_CONTRIBUTION_PHT * P0);
+    const preClaimHatcherArtistTokensBalance = await artistToken.balanceOf(hatcher1);
+    const preClaimFundingPoolArtistTokensBalance = await artistToken.balanceOf(fundingPool.address);
+
+    console.log(`Pre-claiming:`);
+    console.log(` - FundingPool has: ${wei2pht(preClaimFundingPoolArtistTokensBalance)} ${artistTokenSymbol}`);
+    console.log(` - Hatcher1 has locked: ${wei2pht(preClaimLockedInternal)} ${artistTokenSymbol}`);
+    console.log(` - Hatcher1 balance: ${wei2pht(preClaimHatcherArtistTokensBalance)} ${artistTokenSymbol}`);
+
+    await artistToken.claimTokens({from: hatcher1});
+
+    const postClaimContribution = await artistToken.initialContributions(hatcher1);
+    const postClaimLockedInternal = postClaimContribution.lockedInternal;
+    const postClaimHatcherArtistTokensBalance = await artistToken.balanceOf(hatcher1);
+    const postClaimFundingPoolArtistTokensBalance = await artistToken.balanceOf(fundingPool.address);
+
+    console.log(`Post-claiming:`);
+    console.log(` - FundingPool has: ${wei2pht(postClaimFundingPoolArtistTokensBalance)} ${artistTokenSymbol}`);
+    console.log(` - Hatcher1 has locked: ${wei2pht(postClaimLockedInternal)} ${artistTokenSymbol}`);
+    console.log(` - Hatcher1 balance: ${wei2pht(postClaimHatcherArtistTokensBalance)} ${artistTokenSymbol}`);
+
+    assert.equal(preClaimLockedInternal.toString(), preClaimLockedInternalExpected.toString());
+    assert.isTrue(postClaimLockedInternal.lt(preClaimLockedInternal), "no hatcher's locked internal artist tokens got unlocked");
+    assert.isTrue(postClaimHatcherArtistTokensBalance.gt(preClaimHatcherArtistTokensBalance), "hatcher artist tokens balance didn't increase");
   });
 });
