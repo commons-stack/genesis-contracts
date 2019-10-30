@@ -27,7 +27,7 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
   const P0 =  process.env.HATCH_PRICE_PER_TOKEN; // price to purchase during hatching
   const FRICTION = process.env.FUNDING_POOL_BURN_PERCENTAGE; // 2% in ppm
   const GAS_PRICE_WEI = process.env.GAS_PRICE_WEI; // 15gwei
-  const DURATION = process.env.DURATION; // 1 week in seconds
+  const DURATION = process.env.HATCH_DURATION_SECONDS; // 1 week in seconds
 
   const ARTIST_NAME = 'Lightstreams Van Economy';
   const ARTIST_SYMBOL = 'LVE';
@@ -35,6 +35,12 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
   const BUYERS = parseInt(process.env.BUYERS);
   const BUYER_CAPITAL_PHT = process.env.BUYER_CAPITAL_PHT;
   const BUYER_CAPITAL_WEI = pht2wei(BUYER_CAPITAL_PHT);
+
+  const SELLER_RATIO = parseFloat(process.env.SELLER_RATIO);
+  const SELLER_AMOUNT_RATIO = parseFloat(process.env.SELLER_AMOUNT_RATIO);
+  const SELLERS = Math.round(BUYERS * SELLER_RATIO);
+
+  const PRINT_MARKET_ACTIVITY = process.env.PRINT_MARKET_ACTIVITY === "true";
 
   it('should print economy settings', async () => {
     console.log({
@@ -46,6 +52,8 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
       artistSymbol: ARTIST_SYMBOL,
       buyers: BUYERS,
       buyerCapitalPHT: BUYER_CAPITAL_PHT,
+      sellerRatio: SELLER_RATIO,
+      sellerAmountRatio: SELLER_AMOUNT_RATIO,
     });
   });
 
@@ -104,35 +112,68 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
     await wPHT.approve(artistToken.address, BUYER_CAPITAL_WEI, {from: buyer1});
     await artistToken.mint(BUYER_CAPITAL_WEI, {from: buyer1, gasPrice: GAS_PRICE_WEI});
 
-    const preBurnBuyer1ArtistTokensBalance = await artistToken.balanceOf(buyer1);
+    const buyer1ArtistTokensBalance = await artistToken.balanceOf(buyer1);
 
-    for (let i = 2; i <= BUYERS; i++) {
+    console.log(`Buyer1:`);
+    console.log(` purchased ${wei2pht(buyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
+
+    const buyersArtistTokens = [];
+    buyersArtistTokens[0] = buyer1ArtistTokensBalance;
+
+    for (let buyerIndex = 1; buyerIndex < BUYERS; buyerIndex++) {
+      const curBalance = await artistToken.balanceOf(buyerSimulator);
+
       await wPHT.deposit({ from: buyerSimulator, value: BUYER_CAPITAL_WEI });
       await wPHT.approve(artistToken.address, BUYER_CAPITAL_WEI, {from: buyerSimulator});
       await artistToken.mint(BUYER_CAPITAL_WEI, {from: buyerSimulator, gasPrice: GAS_PRICE_WEI});
+
+      const newBalance = await artistToken.balanceOf(buyerSimulator);
+      const purchasedAmount = newBalance.sub(curBalance);
+
+      buyersArtistTokens[buyerIndex] = purchasedAmount;
+
+      if (PRINT_MARKET_ACTIVITY) {
+        console.log(`Buyer${buyerIndex + 1}:`);
+        console.log(` purchased ${wei2pht(purchasedAmount)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
+      }
+
+      const sellerDelta = Math.round(BUYERS / SELLERS);
+      if (buyerIndex % sellerDelta === 0) {
+        const curBalance = await wPHT.balanceOf(buyerSimulator);
+        const sellerIndex = (buyerIndex - sellerDelta) + 1;
+        const sellAmount = pht2wei(wei2pht(buyersArtistTokens[sellerIndex]) * SELLER_AMOUNT_RATIO);
+
+        await artistToken.burn(sellAmount, {from: buyerSimulator, gasPrice: GAS_PRICE_WEI});
+
+        const newBalance = await wPHT.balanceOf(buyerSimulator);
+        const revenue = newBalance.sub(curBalance);
+
+        if (PRINT_MARKET_ACTIVITY) {
+          console.log(`Buyer${sellerIndex + 1}:`);
+          console.log(` sold ${wei2pht(sellAmount)} ${artistTokenSymbol} for ${wei2pht(revenue)} WPHT worth ${wei2euro(revenue)}€`);
+        }
+      }
     }
 
     await wPHT.deposit({ from: lastBuyer, value: BUYER_CAPITAL_WEI });
     await wPHT.approve(artistToken.address, BUYER_CAPITAL_WEI, {from: lastBuyer});
     await artistToken.mint(BUYER_CAPITAL_WEI, {from: lastBuyer, gasPrice: GAS_PRICE_WEI});
+
     const lastBuyerArtistTokensBalance = await artistToken.balanceOf(lastBuyer);
-
-    await artistToken.burn(preBurnBuyer1ArtistTokensBalance, {from: buyer1, gasPrice: GAS_PRICE_WEI});
-    const postBurnBuyer1TokenWPHTBalance = await wPHT.balanceOf(buyer1);
-
-    const fundingPoolWPHTBalance = await wPHT.balanceOf(fundingPool.address);
-    const artistTokenWPHTBalance = await wPHT.balanceOf(artistToken.address);
-    const artistTokenTotalSupply = await artistToken.totalSupply();
-
-    console.log(`Buyer1:`);
-    console.log(` purchased ${wei2pht(preBurnBuyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
 
     console.log(`Buyer${BUYERS}:`);
     console.log(` purchased ${wei2pht(lastBuyerArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
 
+    await artistToken.burn(buyer1ArtistTokensBalance, {from: buyer1, gasPrice: GAS_PRICE_WEI});
+    const postBurnBuyer1TokenWPHTBalance = await wPHT.balanceOf(buyer1);
+
     console.log(`Buyer1:`);
-    console.log(` sold ${wei2pht(preBurnBuyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${wei2pht(postBurnBuyer1TokenWPHTBalance)} WPHT worth ${wei2euro(postBurnBuyer1TokenWPHTBalance)}€`);
+    console.log(` sold ${wei2pht(buyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${wei2pht(postBurnBuyer1TokenWPHTBalance)} WPHT worth ${wei2euro(postBurnBuyer1TokenWPHTBalance)}€`);
     console.log(` gained ${calcPercentageIncrease(BUYER_CAPITAL_PHT, wei2pht(postBurnBuyer1TokenWPHTBalance))}% in profit`);
+
+    const fundingPoolWPHTBalance = await wPHT.balanceOf(fundingPool.address);
+    const artistTokenWPHTBalance = await wPHT.balanceOf(artistToken.address);
+    const artistTokenTotalSupply = await artistToken.totalSupply();
 
     console.log(`Artist:`);
     console.log(` - hatch limit ${HATCH_LIMIT_PHT} WPHT worth ${pht2euro(HATCH_LIMIT_PHT)}€ reached`);
