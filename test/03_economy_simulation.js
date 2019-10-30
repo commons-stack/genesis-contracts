@@ -23,9 +23,9 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
 
   const DENOMINATOR_PPM = 1000000;
   const RESERVE_RATIO = process.env.RESERVE_RATIO; // kappa ~ 6
-  const THETA = process.env.FUNDING_POOL_PERCENTAGE; // 35% in ppm
+  const THETA = process.env.FUNDING_POOL_HATCH_PERCENTAGE; // 35% in ppm
   const P0 =  process.env.HATCH_PRICE_PER_TOKEN; // price to purchase during hatching
-  const FRICTION = process.env.FRICTION; // 2% in ppm
+  const FRICTION = process.env.FUNDING_POOL_BURN_PERCENTAGE; // 2% in ppm
   const GAS_PRICE_WEI = process.env.GAS_PRICE_WEI; // 15gwei
   const DURATION = process.env.DURATION; // 1 week in seconds
 
@@ -40,7 +40,8 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
     console.log({
       hatchLimitPHT: HATCH_LIMIT_PHT,
       hatchPricePerToken: P0,
-      fundingPoolPercentage: THETA / DENOMINATOR_PPM * 100,
+      fundingPoolHatchPercentage: THETA / DENOMINATOR_PPM * 100,
+      fundingPoolBurnPercentage: FRICTION / DENOMINATOR_PPM * 100,
       artistName: ARTIST_NAME,
       artistSymbol: ARTIST_SYMBOL,
       buyers: BUYERS,
@@ -131,9 +132,10 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
 
     console.log(`Buyer1:`);
     console.log(` sold ${wei2pht(preBurnBuyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${wei2pht(postBurnBuyer1TokenWPHTBalance)} WPHT worth ${wei2euro(postBurnBuyer1TokenWPHTBalance)}€`);
-    console.log(` gained ${calcPercentageIncrease(BUYER_CAPITAL_PHT, wei2pht(postBurnBuyer1TokenWPHTBalance))} % in profit`);
+    console.log(` gained ${calcPercentageIncrease(BUYER_CAPITAL_PHT, wei2pht(postBurnBuyer1TokenWPHTBalance))}% in profit`);
 
     console.log(`Artist:`);
+    console.log(` - hatch limit ${HATCH_LIMIT_PHT} WPHT worth ${pht2euro(HATCH_LIMIT_PHT)}€ reached`);
     console.log(` - has ${wei2pht(fundingPoolWPHTBalance)} WPHT worth ${wei2euro(fundingPoolWPHTBalance)}€ in disposition to spend on equipment, etc from the funding pool`);
     console.log(` - total supply of his economy is ${wei2pht(artistTokenTotalSupply)} ${artistTokenSymbol}`);
     console.log(` - total size of his economy is ${wei2pht(artistTokenWPHTBalance)} WPHT worth ${wei2euro(artistTokenWPHTBalance)}€`);
