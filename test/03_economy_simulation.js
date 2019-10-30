@@ -6,7 +6,7 @@
 
 require('dotenv').config({ path: `${process.env.PWD}/.env` });
 
-const { pht2wei, wei2pht, calcPercentageIncrease } = require('./utils');
+const { pht2wei, wei2pht, pht2euro, wei2euro, calcPercentageIncrease } = require('./utils');
 
 const FundingPoolMock = artifacts.require("FundingPoolMock.sol");
 const WPHT = artifacts.require("WPHT.sol");
@@ -124,18 +124,18 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
     const artistTokenTotalSupply = await artistToken.totalSupply();
 
     console.log(`Buyer1:`);
-    console.log(` purchased ${wei2pht(preBurnBuyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT`);
+    console.log(` purchased ${wei2pht(preBurnBuyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
 
     console.log(`Buyer${BUYERS}:`);
-    console.log(` purchased ${wei2pht(lastBuyerArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT`);
+    console.log(` purchased ${wei2pht(lastBuyerArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
 
     console.log(`Buyer1:`);
-    console.log(` sold ${wei2pht(preBurnBuyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${wei2pht(postBurnBuyer1TokenWPHTBalance)} WPHT`);
+    console.log(` sold ${wei2pht(preBurnBuyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${wei2pht(postBurnBuyer1TokenWPHTBalance)} WPHT worth ${wei2euro(postBurnBuyer1TokenWPHTBalance)}€`);
     console.log(` gained ${calcPercentageIncrease(BUYER_CAPITAL_PHT, wei2pht(postBurnBuyer1TokenWPHTBalance))} % in profit`);
 
     console.log(`Artist:`);
-    console.log(` - has ${wei2pht(fundingPoolWPHTBalance)} WPHT in disposition to spend on equipment, etc from the funding pool`);
+    console.log(` - has ${wei2pht(fundingPoolWPHTBalance)} WPHT worth ${wei2euro(fundingPoolWPHTBalance)}€ in disposition to spend on equipment, etc from the funding pool`);
     console.log(` - total supply of his economy is ${wei2pht(artistTokenTotalSupply)} ${artistTokenSymbol}`);
-    console.log(` - total size of his economy is ${wei2pht(artistTokenWPHTBalance)} WPHT`);
+    console.log(` - total size of his economy is ${wei2pht(artistTokenWPHTBalance)} WPHT worth ${wei2euro(artistTokenWPHTBalance)}€`);
   });
 });
