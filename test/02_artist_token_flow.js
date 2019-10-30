@@ -5,20 +5,12 @@
  */
 
 const { BN, constants, expectEvent, shouldFail, ether } = require('openzeppelin-test-helpers');
-
-const pht2wei = (value) => {
-  return ether(value.toString());
-};
-
-function wei2pht (n) {
-  return web3.utils.fromWei(n, 'ether');
-}
+const { pht2wei, wei2pht } = require('./utils');
 
 const FundingPoolMock = artifacts.require("FundingPoolMock.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-const DENOMINATOR_PPM = 1000000;
 contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
   let fundingPool;
   let wPHT;
@@ -26,6 +18,7 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
   let artistTokenSymbol;
   let postBuyer1ArtistTokensBalance;
 
+  const DENOMINATOR_PPM = 1000000;
   const INIT_HATCHER_WPHT_BALANCE_PHT = 20000;
   const BUYER_WPHT_PURCHASE_COST_PHT = 1000;
   const AMOUNT_TO_RAISE_PHT = 10000;
