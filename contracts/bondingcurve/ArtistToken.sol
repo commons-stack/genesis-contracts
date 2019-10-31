@@ -1,8 +1,9 @@
 pragma solidity ^0.5.0;
 
 import "./CommonsToken.sol";
+import "./Ownable.sol";
 
-contract ArtistToken is CommonsToken {
+contract ArtistToken is CommonsToken, Ownable {
     string public name;   // e.g: Armin Van Lightstreams
     string public symbol; // e.g: AVL
 
@@ -31,7 +32,9 @@ contract ArtistToken is CommonsToken {
         _friction,
         _duration,
         _minExternalContribution
-    ) {
+    )
+    Ownable(msg.sender)
+    {
         name = _name;
         symbol = _symbol;
     }

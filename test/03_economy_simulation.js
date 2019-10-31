@@ -78,8 +78,6 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
     );
 
     artistTokenSymbol = await artistToken.symbol.call();
-
-    await fundingPool.setArtistToken(artistToken.address);
   });
 
   it("should have a Hatcher with positive wPHT(PHT20) balance ready", async () => {

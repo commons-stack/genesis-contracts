@@ -11,7 +11,7 @@ const FundingPoolMock = artifacts.require("FundingPoolMock.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2, fundingPoolAccountant, fundingPoolAttacker]) => {
+contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundingPoolAccountant, fundingPoolAttacker]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -56,12 +56,10 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2, fundingPoolAcc
       FRICTION,
       DURATION,
       MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI,
-      { gas: 10000000 }
+      { from: artist, gas: 10000000 }
     );
 
     artistTokenSymbol = await artistToken.symbol.call();
-
-    await fundingPool.setArtistToken(artistToken.address);
   });
 
   it("Should have Hatchers with positive wPHT(PHT20) balances ready", async () => {
@@ -308,7 +306,7 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2, fundingPoolAcc
     console.log(` - FundingPool balance: ${wei2pht(prefundingPoolBalance)} WPHT`);
     console.log(` - FundingPoolAttacker balance: ${wei2pht(preFundingPoolAttackerBalance)} WPHT`);
 
-    await fundingPool.allocateFunds(fundingPoolAttacker, prefundingPoolBalance, {from: fundingPoolAttacker});
+    await shouldFail.reverting(fundingPool.allocateFunds(artistToken.address, fundingPoolAttacker, prefundingPoolBalance, {from: fundingPoolAttacker}));
 
     const postFundingPoolBalance = await wPHT.balanceOf(fundingPool.address);
     const postFundingPoolAttackerBalance = await wPHT.balanceOf(fundingPoolAttacker);
@@ -321,7 +319,27 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2, fundingPoolAcc
     assert.equal(preFundingPoolAttackerBalance.toString(), postFundingPoolAttackerBalance.toString(), 'an attacker withdraw all artist funding pool WPHTs to his account');
   });
 
-  // TODO: Write a test asserting only valid account, fundingPoolAccountant, can withdraw from funding pool
+  it('should be possible to allocate (withdraw) raised funding pool external tokens by Artist', async () => {
+    const prefundingPoolBalance = await wPHT.balanceOf(fundingPool.address);
+    const preFundingPoolAccountantBalance = await wPHT.balanceOf(fundingPoolAccountant);
+
+    console.log(`Pre-allocating:`);
+    console.log(` - FundingPool balance: ${wei2pht(prefundingPoolBalance)} WPHT`);
+    console.log(` - FundingPoolAccountant balance: ${wei2pht(preFundingPoolAccountantBalance)} WPHT`);
+
+    await fundingPool.allocateFunds(artistToken.address, fundingPoolAccountant, prefundingPoolBalance, {from: artist });
+
+    const postFundingPoolBalance = await wPHT.balanceOf(fundingPool.address);
+    const postFundingPoolAccountantBalance = await wPHT.balanceOf(fundingPoolAccountant);
+    const postFundingPoolAccountantBalanceExpected = preFundingPoolAccountantBalance.add(prefundingPoolBalance);
+
+    console.log(`Post-allocating:`);
+    console.log(` - FundingPool balance: ${wei2pht(postFundingPoolBalance)} WPHT`);
+    console.log(` - FundingPoolAccountant balance: ${wei2pht(postFundingPoolAccountantBalance)} WPHT`);
+
+    assert.equal(postFundingPoolBalance.toString(), "0");
+    assert.equal(postFundingPoolAccountantBalance.toString(), postFundingPoolAccountantBalanceExpected.toString());
+  });
 
   it('should let a hatcher to claim his artist tokens after allocating funds in post-hatch phase', async () => {
     const preClaimContribution = await artistToken.initialContributions(hatcher1);

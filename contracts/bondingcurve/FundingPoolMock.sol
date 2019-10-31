@@ -4,13 +4,12 @@ import "./ArtistToken.sol";
 import "./vendor/ERC20/IERC20.sol";
 
 contract FundingPoolMock {
-  ArtistToken artistToken;
+  function allocateFunds(address artistTokenAddr, address to, uint256 value) public {
+    ArtistToken artistToken = ArtistToken(artistTokenAddr);
+    address artistTokenOwner = artistToken.getOwner();
 
-  function setArtistToken(address _artistToken) public {
-    artistToken = ArtistToken(_artistToken);
-  }
+    require(artistTokenOwner == msg.sender, "only ArtistToken owner can allocate funds");
 
-  function allocateFunds(address to, uint256 value) public {
     artistToken.fundsAllocated(value);
     IERC20(artistToken.externalToken()).transfer(to, value);
   }
