@@ -11,7 +11,7 @@ const FundingPoolMock = artifacts.require("FundingPoolMock.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
+contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2, fundingPoolAccountant]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -19,23 +19,15 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
   let postBuyer1ArtistTokensBalance;
 
   const DENOMINATOR_PPM = 1000000;
-  const INIT_HATCHER_WPHT_BALANCE_PHT = 20000;
   const BUYER_WPHT_PURCHASE_COST_PHT = 1000;
   const AMOUNT_TO_RAISE_PHT = 10000;
   const PER_HATCHER_CONTRIBUTION_PHT = AMOUNT_TO_RAISE_PHT / 2;
   const MIN_REQUIRED_HATCHER_CONTRIBUTION_PHT = 100;
-  const EXCEEDED_AMOUNT_TO_RAISE_PHT = AMOUNT_TO_RAISE_PHT + 1;
-  const INSUFFICIENT_AMOUNT_TO_RAISE_PHT = AMOUNT_TO_RAISE_PHT / 100;
-  const INSUFFICIENT_CONTRIBUTION_PHT = MIN_REQUIRED_HATCHER_CONTRIBUTION_PHT - 1;
 
   const PER_HATCHER_CONTRIBUTION_WEI = pht2wei(PER_HATCHER_CONTRIBUTION_PHT);
   const BUYER_WPHT_PURCHASE_COST_WEI = pht2wei(BUYER_WPHT_PURCHASE_COST_PHT);
-  const INIT_HATCHER_WPHT_BALANCE_WEI = pht2wei(INIT_HATCHER_WPHT_BALANCE_PHT);
   const AMOUNT_TO_RAISE_WEI = pht2wei(AMOUNT_TO_RAISE_PHT);
   const MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI = pht2wei(MIN_REQUIRED_HATCHER_CONTRIBUTION_PHT);
-  const EXCEEDED_AMOUNT_TO_RAISE_WEI = pht2wei(EXCEEDED_AMOUNT_TO_RAISE_PHT);
-  const INSUFFICIENT_AMOUNT_TO_RAISE_WEI = pht2wei(INSUFFICIENT_AMOUNT_TO_RAISE_PHT);
-  const INSUFFICIENT_CONTRIBUTION_WEI = pht2wei(INSUFFICIENT_CONTRIBUTION_PHT);
 
   const RESERVE_RATIO = 142857; // kappa ~ 6
   const THETA = 350000; // 35% in ppm
@@ -75,19 +67,19 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
   it("Should have Hatchers with positive wPHT(PHT20) balances ready", async () => {
     await wPHT.deposit({
       from: hatcher1,
-      value: INIT_HATCHER_WPHT_BALANCE_WEI
+      value: PER_HATCHER_CONTRIBUTION_WEI
     });
 
     await wPHT.deposit({
       from: hatcher2,
-      value: INIT_HATCHER_WPHT_BALANCE_WEI
+      value: PER_HATCHER_CONTRIBUTION_WEI
     });
 
     const hatcher1WPHTBalance = await wPHT.balanceOf(hatcher1);
     const hatcher2WPHTBalance = await wPHT.balanceOf(hatcher2);
 
-    assert.equal(hatcher1WPHTBalance.toString(), INIT_HATCHER_WPHT_BALANCE_WEI.toString());
-    assert.equal(hatcher2WPHTBalance.toString(), INIT_HATCHER_WPHT_BALANCE_WEI.toString());
+    assert.equal(hatcher1WPHTBalance.toString(), PER_HATCHER_CONTRIBUTION_WEI.toString());
+    assert.equal(hatcher2WPHTBalance.toString(), PER_HATCHER_CONTRIBUTION_WEI.toString());
   });
 
   it("Should be in a 'hatching phase' after deployed", async () => {
@@ -308,34 +300,56 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2]) => {
     assert.isTrue(postFundingPoolWPHTBalance.gt(preFundingPoolWPHTBalance), 'funding pool balance should increase when burning tokens');
   });
 
-  it('should be possible to unlock hatched tokens from funding pool', async () => {
-    await fundingPool.allocateFunds(hatcher1, pht2wei('1'), {from: hatcher1});
+  it('should be possible to allocate (withdraw) raised funding pool external tokens', async () => {
+    const fundingPoolBalance = await wPHT.balanceOf(fundingPool.address);
+    const fundingPoolAccountantBalance = await wPHT.balanceOf(fundingPoolAccountant);
+
+    console.log(`Pre-allocating:`);
+    console.log(` - FundingPool balance: ${wei2pht(fundingPoolBalance)} WPHT`);
+    console.log(` - FundingPoolAccountant balance: ${wei2pht(fundingPoolAccountantBalance)} WPHT`);
+
+    await fundingPool.allocateFunds(fundingPoolAccountant, fundingPoolBalance, {from: fundingPoolAccountant});
+
+    const postFundingPoolBalance = await wPHT.balanceOf(fundingPool.address);
+    const postFundingPoolAccountantBalance = await wPHT.balanceOf(fundingPoolAccountant);
+
+    console.log(`Post-allocating:`);
+    console.log(` - FundingPool balance: ${wei2pht(postFundingPoolBalance)} WPHT`);
+    console.log(` - FundingPoolAccountant balance: ${wei2pht(postFundingPoolAccountantBalance)} WPHT`);
   });
 
   it('should let a hatcher to claim his artist tokens after allocating funds in post-hatch phase', async () => {
     const preClaimContribution = await artistToken.initialContributions(hatcher1);
     const preClaimLockedInternal = preClaimContribution.lockedInternal;
     const preClaimLockedInternalExpected = pht2wei(PER_HATCHER_CONTRIBUTION_PHT * P0);
-    const preClaimHatcherArtistTokensBalance = await artistToken.balanceOf(hatcher1);
-    const preClaimFundingPoolArtistTokensBalance = await wPHT.balanceOf(fundingPool.address);
 
-    console.log(`Pre-funding:`);
-    console.log(` - FundingPool has: ${wei2pht(preClaimFundingPoolArtistTokensBalance)} ${artistTokenSymbol}`);
+    const preClaimHatcherWPHTBalance = await wPHT.balanceOf(hatcher1);
+    const preClaimHatcherArtistTokensBalance = await artistToken.balanceOf(hatcher1);
+    const preClaimFundingPoolWPHTBalance = await wPHT.balanceOf(fundingPool.address);
+    const preClaimFundingPoolArtistTokensBalance = await artistToken.balanceOf(fundingPool.address);
+
+    console.log(`Pre-claiming:`);
+    console.log(` - FundingPool balance: ${wei2pht(preClaimFundingPoolWPHTBalance)} WPHT`);
+    console.log(` - FundingPool balance: ${wei2pht(preClaimFundingPoolArtistTokensBalance)} ${artistTokenSymbol}`);
     console.log(` - Hatcher1 has locked: ${wei2pht(preClaimLockedInternal)} ${artistTokenSymbol}`);
-    console.log(` - Hatcher1 balance: ${wei2pht(preClaimHatcherArtistTokensBalance)} ${artistTokenSymbol}`); // TODO: update symbol. Should be wPHT
-    
-    const amountToAllocate = AMOUNT_TO_RAISE_PHT * THETA / DENOMINATOR_PPM
-    await fundingPool.allocateFunds(hatcher1, amountToAllocate * 10) // transfer some amount to a random address to unlock funds. TODO: what is the maximum amount to transfer.
+    console.log(` - Hatcher1 balance: ${wei2pht(preClaimHatcherWPHTBalance)} WPHT`);
+    console.log(` - Hatcher1 balance: ${wei2pht(preClaimHatcherArtistTokensBalance)} ${artistTokenSymbol}`);
+
     await artistToken.claimTokens({from: hatcher1});
 
     const postClaimContribution = await artistToken.initialContributions(hatcher1);
     const postClaimLockedInternal = postClaimContribution.lockedInternal;
-    const postClaimHatcherArtistTokensBalance = await artistToken.balanceOf(hatcher1);
-    const postClaimFundingPoolArtistTokensBalance = await wPHT.balanceOf(fundingPool.address);
 
-    console.log(`Post-funding:`);
-    console.log(` - FundingPool has: ${wei2pht(postClaimFundingPoolArtistTokensBalance)} ${artistTokenSymbol}`);
+    const postClaimHatcherWPHTBalance = await wPHT.balanceOf(hatcher1);
+    const postClaimHatcherArtistTokensBalance = await artistToken.balanceOf(hatcher1);
+    const postClaimFundingPoolWPHTBalance = await wPHT.balanceOf(fundingPool.address);
+    const postClaimFundingPoolArtistTokensBalance = await artistToken.balanceOf(fundingPool.address);
+
+    console.log(`Post-claiming:`);
+    console.log(` - FundingPool balance: ${wei2pht(postClaimFundingPoolWPHTBalance)} WPHT`);
+    console.log(` - FundingPool balance: ${wei2pht(postClaimFundingPoolArtistTokensBalance)} ${artistTokenSymbol}`);
     console.log(` - Hatcher1 has locked: ${wei2pht(postClaimLockedInternal)} ${artistTokenSymbol}`);
+    console.log(` - Hatcher1 balance: ${wei2pht(postClaimHatcherWPHTBalance)} WPHT`);
     console.log(` - Hatcher1 balance: ${wei2pht(postClaimHatcherArtistTokensBalance)} ${artistTokenSymbol}`);
 
     assert.equal(preClaimLockedInternal.toString(), preClaimLockedInternalExpected.toString());
