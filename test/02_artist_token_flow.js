@@ -11,7 +11,7 @@ const FundingPoolMock = artifacts.require("FundingPoolMock.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2, fundingPoolAccountant]) => {
+contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2, fundingPoolAccountant, fundingPoolAttacker]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -300,28 +300,28 @@ contract("ArtistTokenFlow", ([hatcher1, hatcher2, buyer1, buyer2, fundingPoolAcc
     assert.isTrue(postFundingPoolWPHTBalance.gt(preFundingPoolWPHTBalance), 'funding pool balance should increase when burning tokens');
   });
 
-  it('should NOT be possible to allocate (withdraw) raised funding pool external tokens by a random account', async () => {
+  it('should not be possible to allocate (withdraw) raised funding pool external tokens by a random account', async () => {
     const prefundingPoolBalance = await wPHT.balanceOf(fundingPool.address);
-    const preFundingPoolAccountantBalance = await wPHT.balanceOf(fundingPoolAccountant);
+    const preFundingPoolAttackerBalance = await wPHT.balanceOf(fundingPoolAttacker);
 
     console.log(`Pre-allocating:`);
     console.log(` - FundingPool balance: ${wei2pht(prefundingPoolBalance)} WPHT`);
-    console.log(` - FundingPoolAccountant balance: ${wei2pht(preFundingPoolAccountantBalance)} WPHT`);
+    console.log(` - FundingPoolAttacker balance: ${wei2pht(preFundingPoolAttackerBalance)} WPHT`);
 
-    await fundingPool.allocateFunds(fundingPoolAccountant, prefundingPoolBalance, {from: fundingPoolAccountant});
+    await fundingPool.allocateFunds(fundingPoolAttacker, prefundingPoolBalance, {from: fundingPoolAttacker});
 
     const postFundingPoolBalance = await wPHT.balanceOf(fundingPool.address);
-    const postFundingPoolAccountantBalance = await wPHT.balanceOf(fundingPoolAccountant);
+    const postFundingPoolAttackerBalance = await wPHT.balanceOf(fundingPoolAttacker);
 
     console.log(`Post-allocating:`);
     console.log(` - FundingPool balance: ${wei2pht(postFundingPoolBalance)} WPHT`);
-    console.log(` - FundingPoolAccountant balance: ${wei2pht(postFundingPoolAccountantBalance)} WPHT`);
+    console.log(` - FundingPoolAttacker balance: ${wei2pht(postFundingPoolAttackerBalance)} WPHT`);
 
     assert.equal(prefundingPoolBalance.toString(), postFundingPoolBalance.toString(), 'an attacker withdraw artist funding pool!');
-    assert.equal(preFundingPoolAccountantBalance.toString(), postFundingPoolAccountantBalance.toString(), 'an attacker withdraw all artist funding pool WPHTs to his account');
+    assert.equal(preFundingPoolAttackerBalance.toString(), postFundingPoolAttackerBalance.toString(), 'an attacker withdraw all artist funding pool WPHTs to his account');
   });
 
-  // TODO: Write a test asserting only valid account can withdraw from funding pool
+  // TODO: Write a test asserting only valid account, fundingPoolAccountant, can withdraw from funding pool
 
   it('should let a hatcher to claim his artist tokens after allocating funds in post-hatch phase', async () => {
     const preClaimContribution = await artistToken.initialContributions(hatcher1);
