@@ -379,4 +379,18 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     assert.isTrue(postClaimLockedInternal.lt(preClaimLockedInternal), "no hatcher's locked internal artist tokens got unlocked");
     assert.isTrue(postClaimHatcherArtistTokensBalance.gt(preClaimHatcherArtistTokensBalance), "hatcher artist tokens balance didn't increase");
   });
+
+  it('should be possible for hatcher to sell his claimed tokens', async () => {
+    const burnAmount = await artistToken.balanceOf(hatcher1);
+    const preBurnHatcherWPHTBalance = await wPHT.balanceOf(hatcher1);
+
+    await artistToken.burn(burnAmount, {from: hatcher1, gasPrice: GAS_PRICE_WEI});
+
+    const postBurnHatcherWPHTBalance = await wPHT.balanceOf(hatcher1);
+    const revenue = postBurnHatcherWPHTBalance.sub(preBurnHatcherWPHTBalance);
+
+    console.log(`Hatcher1 sold ${wei2pht(burnAmount)} ${artistTokenSymbol} for ${wei2pht(revenue)} WPHT`);
+
+    assert.isTrue(postBurnHatcherWPHTBalance.gt(preBurnHatcherWPHTBalance));
+  });
 });
