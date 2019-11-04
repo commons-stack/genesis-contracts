@@ -60,7 +60,7 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
       sellerRatio: SELLER_RATIO,
       sellerAmountRatio: SELLER_AMOUNT_RATIO,
       artistFundingPoolWithdrawPercentage: (ARTIST_FUNDING_POOL_WITHDRAW_RATIO * 100) + "%",
-      hatcherSellRatio: (HATCHER_SELL_RATIO * 100) + "%",
+      hatcherSellPercentage: (HATCHER_SELL_RATIO * 100) + "%",
     });
   });
 
