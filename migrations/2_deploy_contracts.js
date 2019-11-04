@@ -1,7 +1,7 @@
 // ReserveTokenMock will be an existing smart contract (DAI)
 const WPHT = artifacts.require("WPHT");
 const ArtistToken = artifacts.require("ArtistToken");
-const FundingPoolMock = artifacts.require("FundingPoolMock");
+const FundingPool = artifacts.require("FundingPool");
 
 // Curve parameters:
 const reserveRatio = 142857;  // Kappa (~ 6)
@@ -14,8 +14,8 @@ const duration = 3024000000000000; // ~5 weeks.
 const minExternalContibution = 100000;
 
 module.exports = async function(deployer, networks, accounts) {
-  await deployer.deploy(FundingPoolMock);
-  const fundingPoolMockInstance = await FundingPoolMock.deployed();
+  await deployer.deploy(FundingPool);
+  const fundingPoolMockInstance = await FundingPool.deployed();
 
   await deployer.deploy(WPHT, accounts[0]);
   const wPHT = await WPHT.deployed();

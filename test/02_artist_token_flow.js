@@ -7,7 +7,7 @@
 const { BN, constants, expectEvent, shouldFail, ether } = require('openzeppelin-test-helpers');
 const { pht2wei, wei2pht } = require('./utils');
 
-const FundingPoolMock = artifacts.require("FundingPoolMock.sol");
+const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
@@ -40,7 +40,7 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
   const ARTIST_SYMBOL = 'AVL';
 
   it('should deploy new ArtistToken', async () => {
-    fundingPool = await FundingPoolMock.new();
+    fundingPool = await FundingPool.new();
     wPHT = await WPHT.new();
 
     artistToken = await ArtistToken.new(

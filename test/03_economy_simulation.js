@@ -8,7 +8,7 @@ require('dotenv').config({ path: `${process.env.PWD}/.env` });
 
 const { pht2wei, wei2pht, pht2euro, wei2euro, calcPercentageIncrease } = require('./utils');
 
-const FundingPoolMock = artifacts.require("FundingPoolMock.sol");
+const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
@@ -58,7 +58,7 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
   });
 
   it('should deploy a new ArtistToken', async () => {
-    fundingPool = await FundingPoolMock.new();
+    fundingPool = await FundingPool.new();
     wPHT = await WPHT.new();
 
     artistToken = await ArtistToken.new(

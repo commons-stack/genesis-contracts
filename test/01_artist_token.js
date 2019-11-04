@@ -4,7 +4,7 @@ const pht2wei = (value) => {
   return ether(value.toString());
 };
 
-const FundingPoolMock = artifacts.require("FundingPoolMock.sol");
+const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
@@ -36,7 +36,7 @@ contract("ArtistToken", ([hatcher1, hatcher2, lateInvestor]) => {
   const DURATION = 604800; // 1 week in seconds
 
   beforeEach(async function() {
-    fundingPool = await FundingPoolMock.new();
+    fundingPool = await FundingPool.new();
     wPHT = await WPHT.new();
 
     artistToken = await ArtistToken.new(
