@@ -202,11 +202,14 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
   });
 
   it('should let hatcher to claim his tokens', async () => {
+    const contribution = await artistToken.initialContributions(hatcher);
+    const lockedInternal = contribution.lockedInternal;
+
     await artistToken.claimTokens({from: hatcher});
 
     const balance = await artistToken.balanceOf(hatcher);
 
-    console.log(`Hatcher claimed ${wei2pht(balance)} ${artistTokenSymbol}`);
+    console.log(`Hatcher claimed ${wei2pht(balance)} / ${wei2pht(lockedInternal)} ${artistTokenSymbol}`);
   });
 
   it('should let hatcher to sell his claimed tokens', async () => {
