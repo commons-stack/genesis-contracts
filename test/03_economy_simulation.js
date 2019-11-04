@@ -40,23 +40,27 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
   const SELLER_AMOUNT_RATIO = parseFloat(process.env.SELLER_AMOUNT_RATIO);
   const SELLERS = Math.round(BUYERS * SELLER_RATIO);
 
-  const ARTIST_FUNDING_POOL_WITHDRAW_PERCENTAGE = parseFloat(process.env.ARTIST_FUNDING_POOL_WITHDRAW_PERCENTAGE);
+  const ARTIST_FUNDING_POOL_WITHDRAW_RATIO = parseFloat(process.env.ARTIST_FUNDING_POOL_WITHDRAW_RATIO);
+  const HATCHER_SELL_RATIO = parseFloat(process.env.HATCHER_SELL_RATIO);
 
   const PRINT_MARKET_ACTIVITY = process.env.PRINT_MARKET_ACTIVITY === "true";
 
   it('should print economy settings', async () => {
     console.log({
       hatchLimitPHT: HATCH_LIMIT_PHT,
+      hatchLimitEuro: pht2euro(HATCH_LIMIT_PHT) + "€",
       hatchPricePerToken: P0,
-      fundingPoolHatchPercentage: THETA / DENOMINATOR_PPM * 100,
-      fundingPoolBurnPercentage: FRICTION / DENOMINATOR_PPM * 100,
+      fundingPoolHatchPercentage: (THETA / DENOMINATOR_PPM * 100) + "%",
+      fundingPoolBurnPercentage: (FRICTION / DENOMINATOR_PPM * 100) + "%",
       artistName: ARTIST_NAME,
       artistSymbol: ARTIST_SYMBOL,
       buyers: BUYERS,
       buyerCapitalPHT: BUYER_CAPITAL_PHT,
+      buyerCapitalEuro: pht2euro(BUYER_CAPITAL_PHT) + "€",
       sellerRatio: SELLER_RATIO,
       sellerAmountRatio: SELLER_AMOUNT_RATIO,
-      artistFundingPoolWithdrawPercentage: ARTIST_FUNDING_POOL_WITHDRAW_PERCENTAGE * 100
+      artistFundingPoolWithdrawPercentage: (ARTIST_FUNDING_POOL_WITHDRAW_RATIO * 100) + "%",
+      hatcherSellRatio: (HATCHER_SELL_RATIO * 100) + "%",
     });
   });
 
@@ -185,15 +189,37 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
 
   it('should let an Artist to allocate raised funds from the FundingPool', async () => {
     const wPHTBalance = await wPHT.balanceOf(fundingPool.address);
-    const withdrawAmountPHT = wei2pht(wPHTBalance) * ARTIST_FUNDING_POOL_WITHDRAW_PERCENTAGE;
+    const withdrawAmountPHT = wei2pht(wPHTBalance) * ARTIST_FUNDING_POOL_WITHDRAW_RATIO;
     const withdrawAmountWei = pht2wei(withdrawAmountPHT);
 
     await fundingPool.allocateFunds(artistToken.address, artistAccountant, withdrawAmountWei, { from: artist });
 
-    console.log(`Artist withdrawn ${ARTIST_FUNDING_POOL_WITHDRAW_PERCENTAGE * 100}% of tokens worth ${wei2euro(withdrawAmountWei)}€, ${withdrawAmountPHT} WPHT, from FundingPool to an external account`);
+    console.log(`Artist withdrawn ${ARTIST_FUNDING_POOL_WITHDRAW_RATIO * 100}% of tokens, ${withdrawAmountPHT} WPHT, worth ${pht2euro(withdrawAmountPHT)}€ from FundingPool to an external account`);
 
     const accountantWPHTBalance = await wPHT.balanceOf(artistAccountant);
 
     assert.equal(accountantWPHTBalance.toString(), withdrawAmountWei.toString());
+  });
+
+  it('should let hatcher to claim his tokens', async () => {
+    await artistToken.claimTokens({from: hatcher});
+
+    const balance = await artistToken.balanceOf(hatcher);
+
+    console.log(`Hatcher claimed ${wei2pht(balance)} ${artistTokenSymbol}`);
+  });
+
+  it('should let hatcher to sell his claimed tokens', async () => {
+    const wPHTBalance = await wPHT.balanceOf(hatcher);
+    const artistTokensBalance = await artistToken.balanceOf(hatcher);
+    const burnAmountPHT = wei2pht(artistTokensBalance) * HATCHER_SELL_RATIO;
+    const burnAmountWei = pht2wei(burnAmountPHT);
+
+    await artistToken.burn(burnAmountWei, {from: hatcher, gasPrice: GAS_PRICE_WEI});
+
+    const postWPHTBalance = await wPHT.balanceOf(hatcher);
+    const revenue = postWPHTBalance.sub(wPHTBalance);
+
+    console.log(`Hatcher sold ${HATCHER_SELL_RATIO * 100}%, ${burnAmountPHT} ${artistTokenSymbol} for ${wei2euro(revenue)}€`);
   });
 });
