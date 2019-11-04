@@ -40,7 +40,7 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
   const ARTIST_SYMBOL = 'AVL';
 
   it('should deploy new ArtistToken', async () => {
-    fundingPool = await FundingPool.new();
+    fundingPool = await FundingPool.new({ from: artist });
     wPHT = await WPHT.new();
 
     artistToken = await ArtistToken.new(

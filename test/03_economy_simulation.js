@@ -12,7 +12,7 @@ const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, lastBuyer]) => {
+contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1, buyerSimulator, lastBuyer]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -40,6 +40,8 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
   const SELLER_AMOUNT_RATIO = parseFloat(process.env.SELLER_AMOUNT_RATIO);
   const SELLERS = Math.round(BUYERS * SELLER_RATIO);
 
+  const ARTIST_FUNDING_POOL_WITHDRAW_PERCENTAGE = parseFloat(process.env.ARTIST_FUNDING_POOL_WITHDRAW_PERCENTAGE);
+
   const PRINT_MARKET_ACTIVITY = process.env.PRINT_MARKET_ACTIVITY === "true";
 
   it('should print economy settings', async () => {
@@ -54,11 +56,12 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
       buyerCapitalPHT: BUYER_CAPITAL_PHT,
       sellerRatio: SELLER_RATIO,
       sellerAmountRatio: SELLER_AMOUNT_RATIO,
+      artistFundingPoolWithdrawPercentage: ARTIST_FUNDING_POOL_WITHDRAW_PERCENTAGE * 100
     });
   });
 
   it('should deploy a new ArtistToken', async () => {
-    fundingPool = await FundingPool.new();
+    fundingPool = await FundingPool.new({ from: artist });
     wPHT = await WPHT.new();
 
     artistToken = await ArtistToken.new(
@@ -74,7 +77,7 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
       FRICTION,
       DURATION,
       HATCH_LIMIT_PHT,
-      { from: lsAcc, gas: 10000000 }
+      { from: artist, gas: 10000000 }
     );
 
     artistTokenSymbol = await artistToken.symbol.call();
@@ -178,5 +181,19 @@ contract("EconomySimulation", ([lsAcc, artist, hatcher, buyer1, buyerSimulator, 
     console.log(` - has ${wei2pht(fundingPoolWPHTBalance)} WPHT worth ${wei2euro(fundingPoolWPHTBalance)}€ in disposition to spend on equipment, etc from the funding pool`);
     console.log(` - total supply of his economy is ${wei2pht(artistTokenTotalSupply)} ${artistTokenSymbol}`);
     console.log(` - total size of his economy is ${wei2pht(artistTokenWPHTBalance)} WPHT worth ${wei2euro(artistTokenWPHTBalance)}€`);
+  });
+
+  it('should let an Artist to allocate raised funds from the FundingPool', async () => {
+    const wPHTBalance = await wPHT.balanceOf(fundingPool.address);
+    const withdrawAmountPHT = wei2pht(wPHTBalance) * ARTIST_FUNDING_POOL_WITHDRAW_PERCENTAGE;
+    const withdrawAmountWei = pht2wei(withdrawAmountPHT);
+
+    await fundingPool.allocateFunds(artistToken.address, artistAccountant, withdrawAmountWei, { from: artist });
+
+    console.log(`Artist withdrawn ${ARTIST_FUNDING_POOL_WITHDRAW_PERCENTAGE * 100}% of tokens worth ${wei2euro(withdrawAmountWei)}€, ${withdrawAmountPHT} WPHT, from FundingPool to an external account`);
+
+    const accountantWPHTBalance = await wPHT.balanceOf(artistAccountant);
+
+    assert.equal(accountantWPHTBalance.toString(), withdrawAmountWei.toString());
   });
 });
