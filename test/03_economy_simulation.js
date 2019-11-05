@@ -6,13 +6,14 @@
 
 require('dotenv').config({ path: `${process.env.PWD}/.env` });
 
+const { BN } = require('openzeppelin-test-helpers');
 const { pht2wei, wei2pht, pht2euro, wei2euro, calcPercentageIncrease } = require('./utils');
 
 const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1, buyerSimulator, lastBuyer]) => {
+contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcherSimulator, buyer1, buyerSimulator, lastBuyer]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -20,6 +21,7 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
 
   const HATCH_LIMIT_PHT = process.env.HATCH_LIMIT_PHT;
   const HATCH_LIMIT_WEI = pht2wei(HATCH_LIMIT_PHT);
+  const HATCHERS = process.env.HATCHERS;
 
   const DENOMINATOR_PPM = 1000000;
   const RESERVE_RATIO = process.env.RESERVE_RATIO; // kappa ~ 6
@@ -50,6 +52,7 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
       hatchLimitPHT: HATCH_LIMIT_PHT,
       hatchLimitEuro: pht2euro(HATCH_LIMIT_PHT) + "€",
       hatchPricePerToken: P0,
+      hatchers: HATCHERS,
       fundingPoolHatchPercentage: (THETA / DENOMINATOR_PPM * 100) + "%",
       fundingPoolBurnPercentage: (FRICTION / DENOMINATOR_PPM * 100) + "%",
       artistName: ARTIST_NAME,
@@ -87,13 +90,13 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
     artistTokenSymbol = await artistToken.symbol.call();
   });
 
-  it("should have a Hatcher with positive wPHT(PHT20) balance ready", async () => {
+  it("should have hatchers with positive wPHT(PHT20) balances ready", async () => {
     await wPHT.deposit({
-      from: hatcher,
+      from: hatcherSimulator,
       value: HATCH_LIMIT_WEI
     });
 
-    const hatcherWPHTBalance = await wPHT.balanceOf(hatcher);
+    const hatcherWPHTBalance = await wPHT.balanceOf(hatcherSimulator);
 
     assert.equal(hatcherWPHTBalance.toString(), HATCH_LIMIT_WEI.toString());
   });
@@ -104,15 +107,20 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
     assert.isFalse(isHatched);
   });
 
-  it('should end the hatching phase by contributing configured minimum amount to raise from a Hatcher', async () => {
-    await wPHT.approve(artistToken.address, HATCH_LIMIT_WEI, {from: hatcher});
-    await artistToken.hatchContribute(HATCH_LIMIT_WEI, {from: hatcher});
+  it('should end the hatching phase by contributing configured minimum amount to raise from hatchers', async () => {
+    await wPHT.approve(artistToken.address, HATCH_LIMIT_WEI, {from: hatcherSimulator});
+    await artistToken.hatchContribute(HATCH_LIMIT_WEI, {from: hatcherSimulator});
     let isHatched = await artistToken.isHatched();
 
     assert.isTrue(isHatched);
   });
 
   it('should simulate configured market activity from .env file and print economy state', async () => {
+    if (BUYERS === 0) {
+      console.log("No post-hatch buying simulation is happening because BUYERS setting is set to 0");
+      return;
+    }
+
     await wPHT.deposit({ from: buyer1, value: BUYER_CAPITAL_WEI });
     await wPHT.approve(artistToken.address, BUYER_CAPITAL_WEI, {from: buyer1});
     await artistToken.mint(BUYER_CAPITAL_WEI, {from: buyer1, gasPrice: GAS_PRICE_WEI});
@@ -125,7 +133,7 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
     const buyersArtistTokens = [];
     buyersArtistTokens[0] = buyer1ArtistTokensBalance;
 
-    for (let buyerIndex = 1; buyerIndex < BUYERS; buyerIndex++) {
+    for (let buyerIndex = 1; buyerIndex < BUYERS - 1; buyerIndex++) {
       const curBalance = await artistToken.balanceOf(buyerSimulator);
 
       await wPHT.deposit({ from: buyerSimulator, value: BUYER_CAPITAL_WEI });
@@ -137,7 +145,7 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
 
       buyersArtistTokens[buyerIndex] = purchasedAmount;
 
-      if (PRINT_MARKET_ACTIVITY) {
+      if (PRINT_MARKET_ACTIVITY || buyerIndex === 0) {
         console.log(`Buyer${buyerIndex + 1}:`);
         console.log(` purchased ${wei2pht(purchasedAmount)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
       }
@@ -160,14 +168,16 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
       }
     }
 
-    await wPHT.deposit({ from: lastBuyer, value: BUYER_CAPITAL_WEI });
-    await wPHT.approve(artistToken.address, BUYER_CAPITAL_WEI, {from: lastBuyer});
-    await artistToken.mint(BUYER_CAPITAL_WEI, {from: lastBuyer, gasPrice: GAS_PRICE_WEI});
+    if (BUYERS > 1) {
+      await wPHT.deposit({ from: lastBuyer, value: BUYER_CAPITAL_WEI });
+      await wPHT.approve(artistToken.address, BUYER_CAPITAL_WEI, {from: lastBuyer});
+      await artistToken.mint(BUYER_CAPITAL_WEI, {from: lastBuyer, gasPrice: GAS_PRICE_WEI});
 
-    const lastBuyerArtistTokensBalance = await artistToken.balanceOf(lastBuyer);
+      const lastBuyerArtistTokensBalance = await artistToken.balanceOf(lastBuyer);
 
-    console.log(`Buyer${BUYERS}:`);
-    console.log(` purchased ${wei2pht(lastBuyerArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
+      console.log(`Buyer${BUYERS}:`);
+      console.log(` purchased ${wei2pht(lastBuyerArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
+    }
 
     await artistToken.burn(buyer1ArtistTokensBalance, {from: buyer1, gasPrice: GAS_PRICE_WEI});
     const postBurnBuyer1TokenWPHTBalance = await wPHT.balanceOf(buyer1);
@@ -201,28 +211,35 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcher, buyer1
     assert.equal(accountantWPHTBalance.toString(), withdrawAmountWei.toString());
   });
 
-  it('should let hatcher to claim his tokens', async () => {
-    const contribution = await artistToken.initialContributions(hatcher);
+  it('should let hatchers to claim their tokens', async () => {
+    const contribution = await artistToken.initialContributions(hatcherSimulator);
     const lockedInternal = contribution.lockedInternal;
 
-    await artistToken.claimTokens({from: hatcher});
+    await artistToken.claimTokens({from: hatcherSimulator});
 
-    const balance = await artistToken.balanceOf(hatcher);
+    const balance = await artistToken.balanceOf(hatcherSimulator);
 
     console.log(`Hatcher claimed ${wei2pht(balance)} / ${wei2pht(lockedInternal)} ${artistTokenSymbol}`);
   });
 
-  it('should let hatcher to sell his claimed tokens', async () => {
-    const wPHTBalance = await wPHT.balanceOf(hatcher);
-    const artistTokensBalance = await artistToken.balanceOf(hatcher);
+  it('should let hatchers to sell their claimed tokens', async () => {
+    if (HATCHER_SELL_RATIO === 0) {
+      console.log("No hatchers selling simulation is happening because HATCHER_SELL_RATIO setting is set to 0.0");
+      return;
+    }
+
+    const wPHTBalance = await wPHT.balanceOf(hatcherSimulator);
+    const artistTokensBalance = await artistToken.balanceOf(hatcherSimulator);
     const burnAmountPHT = wei2pht(artistTokensBalance) * HATCHER_SELL_RATIO;
+    const burnAmountPHTPerHatcher = burnAmountPHT / HATCHERS;
     const burnAmountWei = pht2wei(burnAmountPHT);
 
-    await artistToken.burn(burnAmountWei, {from: hatcher, gasPrice: GAS_PRICE_WEI});
+    await artistToken.burn(burnAmountWei, {from: hatcherSimulator, gasPrice: GAS_PRICE_WEI});
 
-    const postWPHTBalance = await wPHT.balanceOf(hatcher);
+    const postWPHTBalance = await wPHT.balanceOf(hatcherSimulator);
     const revenue = postWPHTBalance.sub(wPHTBalance);
+    const revenuePerHatcher = revenue.div(new BN(HATCHERS));
 
-    console.log(`Hatcher sold ${HATCHER_SELL_RATIO * 100}%, ${burnAmountPHT} ${artistTokenSymbol} for ${wei2euro(revenue)}€`);
+    console.log(`An average hatcher sold ${HATCHER_SELL_RATIO * 100}%, ${burnAmountPHTPerHatcher} ${artistTokenSymbol} for ${wei2euro(revenuePerHatcher)}€`);
   });
 });
