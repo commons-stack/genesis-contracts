@@ -179,12 +179,14 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcherSimulato
       console.log(` purchased ${wei2pht(lastBuyerArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
     }
 
-    await artistToken.burn(buyer1ArtistTokensBalance, {from: buyer1, gasPrice: GAS_PRICE_WEI});
-    const postBurnBuyer1TokenWPHTBalance = await wPHT.balanceOf(buyer1);
+    if (SELLER_RATIO > 0) {
+      await artistToken.burn(buyer1ArtistTokensBalance, {from: buyer1, gasPrice: GAS_PRICE_WEI});
+      const postBurnBuyer1TokenWPHTBalance = await wPHT.balanceOf(buyer1);
 
-    console.log(`Buyer1:`);
-    console.log(` sold ${wei2pht(buyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${wei2pht(postBurnBuyer1TokenWPHTBalance)} WPHT worth ${wei2euro(postBurnBuyer1TokenWPHTBalance)}€`);
-    console.log(` gained ${calcPercentageIncrease(BUYER_CAPITAL_PHT, wei2pht(postBurnBuyer1TokenWPHTBalance))}% in profit`);
+      console.log(`Buyer1:`);
+      console.log(` sold ${wei2pht(buyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${wei2pht(postBurnBuyer1TokenWPHTBalance)} WPHT worth ${wei2euro(postBurnBuyer1TokenWPHTBalance)}€`);
+      console.log(` gained ${calcPercentageIncrease(BUYER_CAPITAL_PHT, wei2pht(postBurnBuyer1TokenWPHTBalance))}% in profit`);
+    }
 
     const fundingPoolWPHTBalance = await wPHT.balanceOf(fundingPool.address);
     const artistTokenWPHTBalance = await wPHT.balanceOf(artistToken.address);
