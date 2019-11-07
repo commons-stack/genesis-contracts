@@ -13,7 +13,7 @@ const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcherSimulator, buyer1, buyerSimulator, lastBuyer]) => {
+contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, hatcherSimulator, buyer1, buyerSimulator, lastBuyer]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -21,7 +21,14 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcherSimulato
 
   const HATCH_LIMIT_PHT = process.env.HATCH_LIMIT_PHT;
   const HATCH_LIMIT_WEI = pht2wei(HATCH_LIMIT_PHT);
-  const HATCHERS = process.env.HATCHERS;
+  const SUPER_HATCHER_CAPITAL_PHT = process.env.SUPER_HATCHER_CAPITAL_PHT;
+  const SUPER_HATCHER_CAPITAL_WEI = pht2wei(SUPER_HATCHER_CAPITAL_PHT);
+  const AVERAGE_HATCHER_CAPITAL_PHT = process.env.AVERAGE_HATCHER_CAPITAL_PHT;
+  const AVERAGE_HATCHER_CAPITAL_WEI = pht2wei(AVERAGE_HATCHER_CAPITAL_PHT);
+  const HATCHER_SIMULATOR_DEPOSIT_WEI = HATCH_LIMIT_WEI.sub(SUPER_HATCHER_CAPITAL_WEI);
+  const TOTAL_HATCHERS = ((HATCH_LIMIT_PHT - SUPER_HATCHER_CAPITAL_PHT) / AVERAGE_HATCHER_CAPITAL_PHT) + 1;
+  const SUPER_HATCHERS = 1;
+  const AVERAGE_HATCHERS = TOTAL_HATCHERS - SUPER_HATCHERS;
 
   const DENOMINATOR_PPM = 1000000;
   const RESERVE_RATIO = process.env.RESERVE_RATIO; // kappa ~ 6
@@ -51,8 +58,14 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcherSimulato
     console.log({
       hatchLimitPHT: HATCH_LIMIT_PHT,
       hatchLimitEuro: pht2euro(HATCH_LIMIT_PHT) + "€",
+      superHatcherCapitalPHT: SUPER_HATCHER_CAPITAL_PHT,
+      superHatcherCapitalEuro: pht2euro(SUPER_HATCHER_CAPITAL_PHT) + "€",
+      averageHatcherCapitalPHT: AVERAGE_HATCHER_CAPITAL_PHT,
+      averageHatcherCapitalEuro: pht2euro(AVERAGE_HATCHER_CAPITAL_PHT) + "€",
+      superHatchers: SUPER_HATCHERS,
+      averageHatchers: AVERAGE_HATCHERS,
+      totalHatchers: TOTAL_HATCHERS,
       hatchPricePerToken: P0,
-      hatchers: HATCHERS,
       fundingPoolHatchPercentage: (THETA / DENOMINATOR_PPM * 100) + "%",
       fundingPoolBurnPercentage: (FRICTION / DENOMINATOR_PPM * 100) + "%",
       artistName: ARTIST_NAME,
@@ -93,12 +106,19 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcherSimulato
   it("should have hatchers with positive wPHT(PHT20) balances ready", async () => {
     await wPHT.deposit({
       from: hatcherSimulator,
-      value: HATCH_LIMIT_WEI
+      value: HATCHER_SIMULATOR_DEPOSIT_WEI
     });
 
-    const hatcherWPHTBalance = await wPHT.balanceOf(hatcherSimulator);
+    await wPHT.deposit({
+      from: superHatcher,
+      value: SUPER_HATCHER_CAPITAL_WEI
+    });
 
-    assert.equal(hatcherWPHTBalance.toString(), HATCH_LIMIT_WEI.toString());
+    const hatcherSimulatorWPHTBalance = await wPHT.balanceOf(hatcherSimulator);
+    const superHatcherWPHTBalance = await wPHT.balanceOf(superHatcher);
+
+    assert.equal(hatcherSimulatorWPHTBalance.toString(), HATCHER_SIMULATOR_DEPOSIT_WEI.toString());
+    assert.equal(superHatcherWPHTBalance.toString(), SUPER_HATCHER_CAPITAL_WEI.toString());
   });
 
   it("should be in a 'hatching phase' after deployed", async () => {
@@ -108,8 +128,11 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcherSimulato
   });
 
   it('should end the hatching phase by contributing configured minimum amount to raise from hatchers', async () => {
-    await wPHT.approve(artistToken.address, HATCH_LIMIT_WEI, {from: hatcherSimulator});
-    await artistToken.hatchContribute(HATCH_LIMIT_WEI, {from: hatcherSimulator});
+    await wPHT.approve(artistToken.address, HATCHER_SIMULATOR_DEPOSIT_WEI, {from: hatcherSimulator});
+    await artistToken.hatchContribute(HATCHER_SIMULATOR_DEPOSIT_WEI, {from: hatcherSimulator});
+
+    await wPHT.approve(artistToken.address, SUPER_HATCHER_CAPITAL_WEI, {from: superHatcher});
+    await artistToken.hatchContribute(SUPER_HATCHER_CAPITAL_WEI, {from: superHatcher});
     let isHatched = await artistToken.isHatched();
 
     assert.isTrue(isHatched);
@@ -213,7 +236,18 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcherSimulato
     assert.equal(accountantWPHTBalance.toString(), withdrawAmountWei.toString());
   });
 
-  it('should let hatchers to claim their tokens', async () => {
+  it('should let a super hatcher to claim his tokens', async () => {
+    const contribution = await artistToken.initialContributions(superHatcher);
+    const lockedInternal = contribution.lockedInternal;
+
+    await artistToken.claimTokens({from: superHatcher});
+
+    const balance = await artistToken.balanceOf(superHatcher);
+
+    console.log(`A super hatcher claimed ${wei2pht(balance)} / ${wei2pht(lockedInternal)} ${artistTokenSymbol}`);
+  });
+
+  it('should let average hatchers to claim their tokens', async () => {
     const contribution = await artistToken.initialContributions(hatcherSimulator);
     const lockedInternal = contribution.lockedInternal;
 
@@ -221,10 +255,31 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcherSimulato
 
     const balance = await artistToken.balanceOf(hatcherSimulator);
 
-    console.log(`Hatcher claimed ${wei2pht(balance)} / ${wei2pht(lockedInternal)} ${artistTokenSymbol}`);
+    console.log(`An average hatcher claimed ${wei2pht(balance.div(new BN(AVERAGE_HATCHERS)))} / ${wei2pht(lockedInternal.div(new BN(AVERAGE_HATCHERS)))} ${artistTokenSymbol}`);
   });
 
-  it('should let hatchers to sell their claimed tokens', async () => {
+  it('should let super hatcher to sell his claimed tokens', async () => {
+    if (HATCHER_SELL_RATIO === 0) {
+      console.log("No hatchers selling simulation is happening because HATCHER_SELL_RATIO setting is set to 0.0");
+      return;
+    }
+
+    const wPHTBalance = await wPHT.balanceOf(superHatcher);
+    const artistTokensBalance = await artistToken.balanceOf(superHatcher);
+    const burnAmountPHT = wei2pht(artistTokensBalance) * HATCHER_SELL_RATIO;
+    const burnAmountWei = pht2wei(burnAmountPHT);
+
+    await artistToken.burn(burnAmountWei, {from: superHatcher, gasPrice: GAS_PRICE_WEI});
+
+    const postWPHTBalance = await wPHT.balanceOf(superHatcher);
+    const revenue = postWPHTBalance.sub(wPHTBalance);
+
+    console.log(`A super hatcher:`);
+    console.log(` sold ${HATCHER_SELL_RATIO * 100}%, ${burnAmountPHT} ${artistTokenSymbol} for ${wei2euro(revenue)}€`);
+    console.log(` gained ${calcPercentageIncrease(SUPER_HATCHER_CAPITAL_PHT, wei2pht(revenue))}% in profit`);
+  });
+
+  it('should let average hatchers to sell their claimed tokens', async () => {
     if (HATCHER_SELL_RATIO === 0) {
       console.log("No hatchers selling simulation is happening because HATCHER_SELL_RATIO setting is set to 0.0");
       return;
@@ -233,15 +288,17 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, hatcherSimulato
     const wPHTBalance = await wPHT.balanceOf(hatcherSimulator);
     const artistTokensBalance = await artistToken.balanceOf(hatcherSimulator);
     const burnAmountPHT = wei2pht(artistTokensBalance) * HATCHER_SELL_RATIO;
-    const burnAmountPHTPerHatcher = burnAmountPHT / HATCHERS;
+    const burnAmountPHTPerHatcher = burnAmountPHT / AVERAGE_HATCHERS;
     const burnAmountWei = pht2wei(burnAmountPHT);
 
     await artistToken.burn(burnAmountWei, {from: hatcherSimulator, gasPrice: GAS_PRICE_WEI});
 
     const postWPHTBalance = await wPHT.balanceOf(hatcherSimulator);
     const revenue = postWPHTBalance.sub(wPHTBalance);
-    const revenuePerHatcher = revenue.div(new BN(HATCHERS));
+    const revenuePerHatcher = revenue.div(new BN(AVERAGE_HATCHERS));
 
-    console.log(`An average hatcher sold ${HATCHER_SELL_RATIO * 100}%, ${burnAmountPHTPerHatcher} ${artistTokenSymbol} for ${wei2euro(revenuePerHatcher)}€`);
+    console.log(`An average hatcher:`);
+    console.log(` sold ${HATCHER_SELL_RATIO * 100}%, ${burnAmountPHTPerHatcher} ${artistTokenSymbol} for ${wei2euro(revenuePerHatcher)}€`);
+    console.log(` gained ${calcPercentageIncrease(AVERAGE_HATCHER_CAPITAL_PHT, wei2pht(revenuePerHatcher))}% in profit`);
   });
 });
