@@ -269,6 +269,11 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
     const burnAmountPHT = wei2pht(artistTokensBalance) * HATCHER_SELL_RATIO;
     const burnAmountWei = pht2wei(burnAmountPHT);
 
+    if (burnAmountPHT === 0) {
+      console.log("Hatcher has no unlocked tokens to sell.");
+      return;
+    }
+
     await artistToken.burn(burnAmountWei, {from: superHatcher, gasPrice: GAS_PRICE_WEI});
 
     const postWPHTBalance = await wPHT.balanceOf(superHatcher);
@@ -290,6 +295,11 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
     const burnAmountPHT = wei2pht(artistTokensBalance) * HATCHER_SELL_RATIO;
     const burnAmountPHTPerHatcher = burnAmountPHT / AVERAGE_HATCHERS;
     const burnAmountWei = pht2wei(burnAmountPHT);
+
+    if (burnAmountPHT === 0) {
+      console.log("Hatcher has no unlocked tokens to sell.");
+      return;
+    }
 
     await artistToken.burn(burnAmountWei, {from: hatcherSimulator, gasPrice: GAS_PRICE_WEI});
 
