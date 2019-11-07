@@ -276,7 +276,7 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
 
     console.log(`A super hatcher:`);
     console.log(` sold ${HATCHER_SELL_RATIO * 100}%, ${burnAmountPHT} ${artistTokenSymbol} for ${wei2euro(revenue)}€`);
-    console.log(` gained ${calcPercentageIncrease(SUPER_HATCHER_CAPITAL_PHT, wei2pht(revenue))}% in profit`);
+    console.log(` gained ${calcPercentageIncrease(SUPER_HATCHER_CAPITAL_PHT * HATCHER_SELL_RATIO, wei2pht(revenue))}% in profit`);
   });
 
   it('should let average hatchers to sell their claimed tokens', async () => {
@@ -299,6 +299,6 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
 
     console.log(`An average hatcher:`);
     console.log(` sold ${HATCHER_SELL_RATIO * 100}%, ${burnAmountPHTPerHatcher} ${artistTokenSymbol} for ${wei2euro(revenuePerHatcher)}€`);
-    console.log(` gained ${calcPercentageIncrease(AVERAGE_HATCHER_CAPITAL_PHT, wei2pht(revenuePerHatcher))}% in profit`);
+    console.log(` gained ${calcPercentageIncrease(AVERAGE_HATCHER_CAPITAL_PHT * HATCHER_SELL_RATIO, wei2pht(revenuePerHatcher))}% in profit`);
   });
 });
