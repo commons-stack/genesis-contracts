@@ -135,6 +135,13 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
     await artistToken.hatchContribute(SUPER_HATCHER_CAPITAL_WEI, {from: superHatcher});
     let isHatched = await artistToken.isHatched();
 
+    const artistTokenWPHTBalance = await wPHT.balanceOf(artistToken.address);
+    const artistTokenTotalSupply = await artistToken.totalSupply();
+
+    console.log("Economy after fully hatched:");
+    console.log(` - total supply is ${wei2pht(artistTokenTotalSupply)} ${artistTokenSymbol}`);
+    console.log(` - total size is ${wei2pht(artistTokenWPHTBalance)} WPHT worth ${wei2euro(artistTokenWPHTBalance)}€`);
+
     assert.isTrue(isHatched);
   });
 
