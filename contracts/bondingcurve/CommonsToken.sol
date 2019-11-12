@@ -210,7 +210,7 @@ contract CommonsToken is BondingCurveToken {
     uint256 lockedInternal = initialContributions[msg.sender].lockedInternal;
 
     // The total amount of INTERNAL tokens that should have been unlocked.
-    uint256 shouldHaveUnlockedInternal = (paidExternal / initialRaise) * unlockedInternal;
+    uint256 shouldHaveUnlockedInternal = (paidExternal * unlockedInternal) / initialRaise;
     // The amount of INTERNAL tokens that was already unlocked.
     uint256 previouslyUnlockedInternal = (paidExternal / p0) - lockedInternal;
     // The amount that can be unlocked.
