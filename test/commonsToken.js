@@ -1,4 +1,4 @@
-const { BN, constants, expectEvent, shouldFail } = require('openzeppelin-test-helpers');
+const { BN, constants, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 
 
 const CommonsToken = artifacts.require("CommonsToken.sol");
@@ -73,14 +73,14 @@ contract("CommonsToken", ([externalTokenMinter, contractCreator, hatcherOne, hat
             })
             describe("When the commonToken cannot pull the reserve token", async function() {
               it('reverts', async function() {
-                await shouldFail.reverting(this.commonsToken.hatchContribute(amountToFundExtern, {from: hatcherOne}))
+                await expectRevert.unspecified(this.commonsToken.hatchContribute(amountToFundExtern, {from: hatcherOne}))
               })
             })
           })
           describe("When there is no sufficient contribution", function() {
             const amountToFundExtern = 1
             it('reverts', async function() {
-              await shouldFail.reverting(this.commonsToken.hatchContribute(amountToFundExtern, {from: hatcherOne}))
+              await expectRevert.unspecified(this.commonsToken.hatchContribute(amountToFundExtern, {from: hatcherOne}))
             })
           })
         })
@@ -143,7 +143,7 @@ contract("CommonsToken", ([externalTokenMinter, contractCreator, hatcherOne, hat
         await this.commonsToken.hatchContribute(amountToFundExtern, {from: hatcherOne});
       })
       it('reverts', async function() {
-        await shouldFail.reverting(this.commonsToken.hatchContribute(amountToFundExtern, {from: hatcherOne}))
+        await expectRevert.unspecified(this.commonsToken.hatchContribute(amountToFundExtern, {from: hatcherOne}))
       })
     })
   });

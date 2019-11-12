@@ -2,12 +2,12 @@
   "name": "@giveth/commons-abc-contracts",
   "version": "0.2.0",
   "devDependencies": {
+    "@openzeppelin/test-helpers": "^0.5.3",
     "chai": "^4.2.0",
     "concurrently": "^4.1.0",
     "dotenv": "^7.0.0",
     "ganache-cli": "^6.4.2",
     "openzeppelin-eth": "^2.0.2",
-    "openzeppelin-test-helpers": "^0.3.2",
     "solhint": "^2.0.0",
     "truffle": "^5.0.12",
     "truffle-hdwallet-provider": "^1.0.6",
