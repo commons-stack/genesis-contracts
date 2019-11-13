@@ -10,7 +10,8 @@ const p0 =  1;                // Price of internal token in external tokens.
 const initialRaise = 300000;  // Raise amount in external tokens.
 const friction = 20000;       // 2% in ppm
 const gasPrice = 15000000000; // 15 gwei
-const duration = 3024000000000000; // ~5 weeks.
+const hatchDurationSeconds = 3024000; // 5 weeks
+const hatchVestingDurationSeconds = 7890000; // 3 months
 const minExternalContibution = 100000;
 
 module.exports = async function(deployer, networks, accounts) {
@@ -32,7 +33,8 @@ module.exports = async function(deployer, networks, accounts) {
     initialRaise,
     fundingPoolMockInstance.address,
     friction,
-    duration,
+    hatchDurationSeconds,
+    hatchVestingDurationSeconds,
     minExternalContibution,
     { gas: 20000000 }
   );

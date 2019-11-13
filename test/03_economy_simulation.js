@@ -35,8 +35,9 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
   const THETA = process.env.FUNDING_POOL_HATCH_PERCENTAGE; // 35% in ppm
   const P0 =  process.env.HATCH_PRICE_PER_TOKEN; // price to purchase during hatching
   const FRICTION = process.env.FUNDING_POOL_BURN_PERCENTAGE; // 2% in ppm
-  const GAS_PRICE_WEI = process.env.GAS_PRICE_WEI; // 15gwei
-  const DURATION = process.env.HATCH_DURATION_SECONDS; // 1 week in seconds
+  const GAS_PRICE_WEI = process.env.GAS_PRICE_WEI;
+  const HATCH_DURATION_SECONDS = process.env.HATCH_DURATION_SECONDS;
+  const HATCH_VESTING_DURATION_SECONDS = process.env.HATCH_VESTING_DURATION_SECONDS;
 
   const ARTIST_NAME = 'Lightstreams Van Economy';
   const ARTIST_SYMBOL = 'LVE';
@@ -58,6 +59,8 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
     console.log({
       hatchLimitPHT: HATCH_LIMIT_PHT,
       hatchLimitEuro: pht2euro(HATCH_LIMIT_PHT) + "€",
+      hatchDurationSeconds: HATCH_DURATION_SECONDS,
+      hatchVestingDurationSeconds: HATCH_VESTING_DURATION_SECONDS,
       superHatcherCapitalPHT: SUPER_HATCHER_CAPITAL_PHT,
       superHatcherCapitalEuro: pht2euro(SUPER_HATCHER_CAPITAL_PHT) + "€",
       averageHatcherCapitalPHT: AVERAGE_HATCHER_CAPITAL_PHT,
@@ -95,7 +98,8 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
       HATCH_LIMIT_WEI,
       fundingPool.address,
       FRICTION,
-      DURATION,
+      HATCH_DURATION_SECONDS,
+      HATCH_VESTING_DURATION_SECONDS,
       HATCH_LIMIT_PHT,
       { from: artist, gas: 10000000 }
     );

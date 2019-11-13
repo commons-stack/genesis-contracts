@@ -9,7 +9,7 @@
     "openzeppelin-eth": "^2.0.2",
     "openzeppelin-test-helpers": "^0.3.2",
     "solhint": "^2.0.0",
-    "truffle": "^5.0.12",
+    "truffle": "^5.1.0",
     "truffle-hdwallet-provider": "^1.0.6",
     "truffle-privatekey-provider": "^1.1.0",
     "wait-on": "^3.2.0",

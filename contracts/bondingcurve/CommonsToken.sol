@@ -52,8 +52,14 @@ contract CommonsToken is BondingCurveToken {
   // Curve state (has it been hatched?).
   bool public isHatched;
 
-  // Time (in seconds) by which the curve must be hatched since initialization.
+  // Timestamp by which the curve must be hatched since initialization.
   uint256 public hatchDeadline;
+
+  // Timestamp by which any hatcher won't be able to claim any tokens.
+  uint256 public hatchVestingDeadline;
+
+  // Time (in seconds) defining how long after hatching finishes a hatcher won't be able to claim any tokens.
+  uint256 public hatchVestingDurationSeconds;
 
   // Mapping of hatchers to contributions.
   mapping(address => PreHatchContribution) public initialContributions;
@@ -99,6 +105,12 @@ contract CommonsToken is BondingCurveToken {
     require(expired, "Curve hatch time has expired");
     _;
   }
+
+  modifier vestingFinished() {
+    require(now >= hatchVestingDeadline, "unable to claim any tokens because vesting is not over yet");
+    _;
+  }
+
   /*
   * @notice initializes the contract
   * @param _externalToken the address of the externalToken ERC20 smart contract
@@ -109,7 +121,8 @@ contract CommonsToken is BondingCurveToken {
   * @param _initialRaise which is the amount of external tokens that must be contributed during the hatching phase to go post-hatching phase
   * @param _fundingPool the address of the fundingPool (can be an organization of a DAO). The fundingPool get's access to the theta * ( internal tokens worth of external tokens ) when the hatch phase ends
   * @param _friction the fraction (in PPM) that goes to the funding pool when internal tokens are burned (post-hatch)
-  * @param _duration time (in seconds) by which the curve must be hatched since calling this constructor.
+  * @param _hatchDurationSeconds time (in seconds) by which the curve must be hatched since calling this constructor.
+  * @param _hatchVestingDurationSeconds time (in seconds) defining how long after hatching finishes a hatcher won't be able to claim any tokens.
   * @param _minExternalContribution the minimum amount of external tokens that should be contributed by a hatcher
   */
   constructor(
@@ -121,7 +134,8 @@ contract CommonsToken is BondingCurveToken {
     uint256 _initialRaise,
     address _fundingPool,
     uint256 _friction,
-    uint256 _duration,
+    uint256 _hatchDurationSeconds,
+    uint256 _hatchVestingDurationSeconds,
     uint256 _minExternalContribution
   )
     public
@@ -138,13 +152,15 @@ contract CommonsToken is BondingCurveToken {
     fundingPool = _fundingPool;
     friction = _friction;
 
-    hatchDeadline = now + _duration;
+    hatchDeadline = now + _hatchDurationSeconds;
+    // Default value. Vesting deadline is set when hatching ends.
+    hatchVestingDeadline = 0;
+    hatchVestingDurationSeconds = _hatchVestingDurationSeconds;
+
     minExternalContribution = _minExternalContribution;
 
     externalToken = ERC20(_externalToken);
   }
-
-  // --- PUBLIC FUNCTIONS: ---
 
   function mint(uint256 _amount)
     public
@@ -203,6 +219,7 @@ contract CommonsToken is BondingCurveToken {
     public
     whileHatched(true)
     onlyHatcher
+    vestingFinished
   {
     require(initialContributions[msg.sender].lockedInternal > 0);
 
@@ -238,8 +255,6 @@ contract CommonsToken is BondingCurveToken {
     return externalToken.balanceOf(address(this));
   }
 
-  // --- INTERNAL FUNCTIONS: ---
-
   // Try and pull the given amount of reserve token into the contract balance.
   // Reverts if there is no approval.
   function _pullExternalTokens(uint256 _amount)
@@ -265,8 +280,10 @@ contract CommonsToken is BondingCurveToken {
     // Mint INTERNAL tokens to the reserve:
     _mint(address(this), amountReserveInternal);
 
-    // End the hatching phase.
+    // End the hatching phase
     isHatched = true;
+    // Start hatchers vesting
+    hatchVestingDeadline = now + hatchVestingDurationSeconds;
   }
 
   // We mint to contributor account and lock the tokens.

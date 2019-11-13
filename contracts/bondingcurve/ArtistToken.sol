@@ -18,7 +18,8 @@ contract ArtistToken is CommonsToken, Ownable {
         uint256 _initialRaise,
         address _fundingPool,
         uint256 _friction,
-        uint256 _duration,
+        uint256 _hatchDurationSeconds,
+        uint256 _hatchVestingDurationSeconds,
         uint256 _minExternalContribution
     ) public
     CommonsToken(
@@ -30,7 +31,8 @@ contract ArtistToken is CommonsToken, Ownable {
         _initialRaise,
         _fundingPool,
         _friction,
-        _duration,
+        _hatchDurationSeconds,
+        _hatchVestingDurationSeconds,
         _minExternalContribution
     )
     Ownable(msg.sender)

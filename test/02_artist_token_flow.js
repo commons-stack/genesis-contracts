@@ -33,8 +33,9 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
   const THETA = 350000; // 35% in ppm
   const P0 =  1; // price to purchase during hatching
   const FRICTION = 20000; // 2% in ppm
-  const GAS_PRICE_WEI = 15000000000; // 15gwei
-  const DURATION = 604800; // 1 week in seconds
+  const GAS_PRICE_WEI = 15000000000; // 15 gwei
+  const HATCH_DURATION_SECONDS = 3024000; // 5 weeks
+  const HATCH_VESTING_DURATION_SECONDS = 0; // 0 seconds
 
   const ARTIST_NAME = 'Armin Van Lightstreams';
   const ARTIST_SYMBOL = 'AVL';
@@ -54,7 +55,8 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
       AMOUNT_TO_RAISE_WEI,
       fundingPool.address,
       FRICTION,
-      DURATION,
+      HATCH_DURATION_SECONDS,
+      HATCH_VESTING_DURATION_SECONDS,
       MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI,
       { from: artist, gas: 10000000 }
     );
@@ -62,7 +64,7 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     artistTokenSymbol = await artistToken.symbol.call();
   });
 
-  it("Should have Hatchers with positive wPHT(PHT20) balances ready", async () => {
+  it("should have Hatchers with positive wPHT(PHT20) balances ready", async () => {
     await wPHT.deposit({
       from: hatcher1,
       value: PER_HATCHER_CONTRIBUTION_WEI
@@ -80,7 +82,7 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     assert.equal(hatcher2WPHTBalance.toString(), PER_HATCHER_CONTRIBUTION_WEI.toString());
   });
 
-  it("Should be in a 'hatching phase' after deployed", async () => {
+  it("should be in a 'hatching phase' after deployed", async () => {
     const isHatched = await artistToken.isHatched();
 
     assert.isFalse(isHatched);

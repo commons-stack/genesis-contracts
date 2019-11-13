@@ -32,8 +32,9 @@ contract("ArtistToken", ([hatcher1, hatcher2, lateInvestor]) => {
   const THETA = 350000; // 35% in ppm
   const P0 =  1;
   const FRICTION = 20000; // 2% in ppm
-  const GAS_PRICE_WEI = 15000000000; // 15gwei
-  const DURATION = 604800; // 1 week in seconds
+  const GAS_PRICE_WEI = 15000000000; // 15 gwei
+  const HATCH_DURATION_SECONDS = 3024000; // 5 weeks
+  const HATCH_VESTING_DURATION_SECONDS = 0; // 0 seconds
 
   beforeEach(async function() {
     fundingPool = await FundingPool.new();
@@ -50,7 +51,8 @@ contract("ArtistToken", ([hatcher1, hatcher2, lateInvestor]) => {
       AMOUNT_TO_RAISE_WEI,
       fundingPool.address,
       FRICTION,
-      DURATION,
+      HATCH_DURATION_SECONDS,
+      HATCH_VESTING_DURATION_SECONDS,
       MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI,
       { gas: 10000000 }
     );

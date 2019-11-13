@@ -22,3 +22,7 @@ module.exports.wei2euro = (photons) => {
 module.exports.calcPercentageIncrease = (before, after) => {
   return ((after - before) / before) * 100.0;
 };
+
+module.exports.sleep = (seconds) => {
+  return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+};
