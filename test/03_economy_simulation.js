@@ -13,7 +13,7 @@ const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, hatcherSimulator, buyer1, buyerSimulator, lastBuyer]) => {
+contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, hatcherSimulator, buyer1, buyerSimulator, lastBuyer, feeRecipient]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -31,10 +31,10 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
   const AVERAGE_HATCHERS = TOTAL_HATCHERS - SUPER_HATCHERS;
 
   const DENOMINATOR_PPM = 1000000;
-  const RESERVE_RATIO = process.env.RESERVE_RATIO; // kappa ~ 6
-  const THETA = process.env.FUNDING_POOL_HATCH_PERCENTAGE; // 35% in ppm
-  const P0 =  process.env.HATCH_PRICE_PER_TOKEN; // price to purchase during hatching
-  const FRICTION = process.env.FUNDING_POOL_BURN_PERCENTAGE; // 2% in ppm
+  const RESERVE_RATIO = process.env.RESERVE_RATIO;
+  const THETA = process.env.FUNDING_POOL_HATCH_PERCENTAGE;
+  const P0 =  process.env.HATCH_PRICE_PER_TOKEN;
+  const FRICTION = process.env.SALE_FEE_PERCENTAGE;
   const GAS_PRICE_WEI = process.env.GAS_PRICE_WEI;
   const HATCH_DURATION_SECONDS = process.env.HATCH_DURATION_SECONDS;
   const HATCH_VESTING_DURATION_SECONDS = process.env.HATCH_VESTING_DURATION_SECONDS;
@@ -55,6 +55,8 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
 
   const PRINT_MARKET_ACTIVITY = process.env.PRINT_MARKET_ACTIVITY === "true";
 
+  const SALE_FEE_PERCENTAGE = (FRICTION / DENOMINATOR_PPM * 100);
+
   it('should print economy settings', async () => {
     console.log({
       hatchLimitPHT: HATCH_LIMIT_PHT,
@@ -70,7 +72,7 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
       totalHatchers: TOTAL_HATCHERS,
       hatchPricePerToken: P0,
       fundingPoolHatchPercentage: (THETA / DENOMINATOR_PPM * 100) + "%",
-      fundingPoolBurnPercentage: (FRICTION / DENOMINATOR_PPM * 100) + "%",
+      saleFeePercentage: SALE_FEE_PERCENTAGE + "%",
       artistName: ARTIST_NAME,
       artistSymbol: ARTIST_SYMBOL,
       buyers: BUYERS,
@@ -90,13 +92,12 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
     artistToken = await ArtistToken.new(
       ARTIST_NAME,
       ARTIST_SYMBOL,
-      wPHT.address,
+      [wPHT.address, fundingPool.address, feeRecipient],
       RESERVE_RATIO,
       GAS_PRICE_WEI,
       THETA,
       P0,
       HATCH_LIMIT_WEI,
-      fundingPool.address,
       FRICTION,
       HATCH_DURATION_SECONDS,
       HATCH_VESTING_DURATION_SECONDS,
@@ -160,6 +161,7 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
     await artistToken.mint(BUYER_CAPITAL_WEI, {from: buyer1, gasPrice: GAS_PRICE_WEI});
 
     const buyer1ArtistTokensBalance = await artistToken.balanceOf(buyer1);
+    const preFeeRecipientWPHTBalance = await wPHT.balanceOf(feeRecipient);
 
     console.log(`Buyer1:`);
     console.log(` purchased ${wei2pht(buyer1ArtistTokensBalance)} ${artistTokenSymbol} for ${BUYER_CAPITAL_PHT} WPHT worth ${pht2euro(BUYER_CAPITAL_PHT)}€`);
@@ -224,6 +226,8 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
 
     const fundingPoolWPHTBalance = await wPHT.balanceOf(fundingPool.address);
     const artistTokenWPHTBalance = await wPHT.balanceOf(artistToken.address);
+    const postFeeRecipientWPHTBalance = await wPHT.balanceOf(feeRecipient);
+    const feeRecipientProfit = postFeeRecipientWPHTBalance.sub(preFeeRecipientWPHTBalance);
     const artistTokenTotalSupply = await artistToken.totalSupply();
 
     console.log(`Artist:`);
@@ -231,6 +235,8 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
     console.log(` - has ${wei2pht(fundingPoolWPHTBalance)} WPHT worth ${wei2euro(fundingPoolWPHTBalance)}€ in disposition to spend on equipment, etc from the funding pool`);
     console.log(` - total supply of his economy is ${wei2pht(artistTokenTotalSupply)} ${artistTokenSymbol}`);
     console.log(` - total size of his economy is ${wei2pht(artistTokenWPHTBalance)} WPHT worth ${wei2euro(artistTokenWPHTBalance)}€`);
+
+    console.log(`FeeRecipient charging ${SALE_FEE_PERCENTAGE}% from each sale earned ${wei2pht(feeRecipientProfit)} WPHT worth ${wei2euro(feeRecipientProfit)}€ from all market activity`);
   });
 
   it('should let an Artist to allocate raised funds from the FundingPool', async () => {

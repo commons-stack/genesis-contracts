@@ -11,7 +11,7 @@ const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundingPoolAccountant, fundingPoolAttacker]) => {
+contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundingPoolAccountant, fundingPoolAttacker, feeRecipient]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -47,13 +47,12 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     artistToken = await ArtistToken.new(
       ARTIST_NAME,
       ARTIST_SYMBOL,
-      wPHT.address,
+      [wPHT.address, fundingPool.address, feeRecipient],
       RESERVE_RATIO,
       GAS_PRICE_WEI,
       THETA,
       P0,
       AMOUNT_TO_RAISE_WEI,
-      fundingPool.address,
       FRICTION,
       HATCH_DURATION_SECONDS,
       HATCH_VESTING_DURATION_SECONDS,
@@ -257,6 +256,7 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
   it('should be possible for buyer1 to sell portion (e.g 33%) of its tokens for at least 10% of his purchase cost', async () => {
     const burnAmount = postBuyer1ArtistTokensBalance.div(new BN(3, 10));
     const preFundingPoolWPHTBalance = await wPHT.balanceOf(fundingPool.address);
+    const preFeeRecipientWPHTBalance = await wPHT.balanceOf(feeRecipient);
     const preArtistTokenWPHTBalance = await wPHT.balanceOf(artistToken.address);
     const preBuyer1WPHTBalance = await wPHT.balanceOf(buyer1);
     const preBuyer1ArtistTokensBalance = await artistToken.balanceOf(buyer1);
@@ -265,6 +265,7 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     await artistToken.burn(burnAmount, {from: buyer1, gasPrice: GAS_PRICE_WEI});
 
     const postFundingPoolWPHTBalance = await wPHT.balanceOf(fundingPool.address);
+    const postFeeRecipientWPHTBalance = await wPHT.balanceOf(feeRecipient);
     const postArtistTokenWPHTBalance = await wPHT.balanceOf(artistToken.address);
     const postBuyer1WPHTBalance = await wPHT.balanceOf(buyer1);
     const postArtistTokenTotalSupply = await artistToken.totalSupply();
@@ -273,18 +274,20 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     const postBuyer1MinimumWPHTBalanceExpected = pht2wei(BUYER_WPHT_PURCHASE_COST_PHT / 10);
     postBuyer1ArtistTokensBalance = await artistToken.balanceOf(buyer1);
     const reimbursement = await artistToken.calculateSaleReturn(preArtistTokenTotalSupply, preArtistTokenWPHTBalance, RESERVE_RATIO, burnAmount);
-    const fundingPoolWPHTFrictionExpected = reimbursement.mul(new BN(FRICTION, 10)).div(new BN(DENOMINATOR_PPM, 10));
-    const postFundingPoolWPHTBalanceExpected = preFundingPoolWPHTBalance.add(fundingPoolWPHTFrictionExpected);
+    const feeRecipientWPHTFrictionExpected = reimbursement.mul(new BN(FRICTION, 10)).div(new BN(DENOMINATOR_PPM, 10));
+    const postFeeRecipientWPHTBalanceExpected = preFeeRecipientWPHTBalance.add(feeRecipientWPHTFrictionExpected);
 
     console.log(`Pre-burning:`);
-    console.log(` - FundingPool balance: ${wei2pht(preFundingPoolWPHTBalance)} WPHT`);
+    console.log(` - FundingPool external balance: ${wei2pht(preFundingPoolWPHTBalance)} WPHT`);
+    console.log(` - FeeRecipient external balance: ${wei2pht(preFeeRecipientWPHTBalance)} WPHT`);
     console.log(` - ArtistToken external balance: ${wei2pht(preArtistTokenWPHTBalance)} WPHT`);
     console.log(` - ArtistToken total supply: ${wei2pht(preArtistTokenTotalSupply)} ${artistTokenSymbol}`);
     console.log(` - Buyer1 balance: ${wei2pht(preBuyer1ArtistTokensBalance)} ${artistTokenSymbol}`);
     console.log(` - Buyer1 external balance: ${wei2pht(preBuyer1WPHTBalance)} WPHT`);
 
     console.log(`Post-burning:`);
-    console.log(` - FundingPool balance: ${wei2pht(postFundingPoolWPHTBalance)} WPHT`);
+    console.log(` - FundingPool external balance: ${wei2pht(postFundingPoolWPHTBalance)} WPHT`);
+    console.log(` - FeeRecipient external balance: ${wei2pht(postFeeRecipientWPHTBalance)} WPHT`);
     console.log(` - ArtistToken external balance: ${wei2pht(postArtistTokenWPHTBalance)} WPHT`);
     console.log(` - ArtistToken total supply: ${wei2pht(postArtistTokenTotalSupply)} ${artistTokenSymbol}`);
     console.log(` - Buyer1 burn amount: ${wei2pht(burnAmount)} ${artistTokenSymbol}`);
@@ -295,9 +298,9 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     assert.equal(postArtistTokenTotalSupply.toString(), postArtistTokenTotalSupplyExpected.toString());
     assert.equal(postBuyer1ArtistTokensBalance.toString(), postBuyer1ArtistTokensBalanceExpected.toString());
 
-    assert.equal(postFundingPoolWPHTBalance.toString(), postFundingPoolWPHTBalanceExpected.toString());
+    assert.equal(postFeeRecipientWPHTBalance.toString(), postFeeRecipientWPHTBalanceExpected.toString());
     assert.isTrue(postBuyer1MinimumWPHTBalanceExpected.lt(postBuyer1WPHTBalance, 'selling 33% of all buyer tokens should be worth at least 10% of his purchase cost'));
-    assert.isTrue(postFundingPoolWPHTBalance.gt(preFundingPoolWPHTBalance), 'funding pool balance should increase when burning tokens');
+    assert.isTrue(postFundingPoolWPHTBalance.eq(preFundingPoolWPHTBalance), 'funding pool balance should stay the same');
   });
 
   it('should not be possible to allocate (withdraw) raised funding pool external tokens by a random account', async () => {

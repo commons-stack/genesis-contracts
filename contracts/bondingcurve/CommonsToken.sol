@@ -34,6 +34,9 @@ contract CommonsToken is BondingCurveToken {
   // Address of the funding pool contract.
   address public fundingPool;
 
+  // Address of the account who will collect all fees from burning tokens.
+  address public feeRecipient;
+
   // Curve parameters:
   uint256 public theta; // fraction (in PPM) of the contributed amount that goes to the funding pool
   uint256 public p0; // price (in externalToken) for which people can purchase the internal token during the hathing phase
@@ -113,34 +116,34 @@ contract CommonsToken is BondingCurveToken {
 
   /*
   * @notice initializes the contract
-  * @param _externalToken the address of the externalToken ERC20 smart contract
+  *
+  * @param _addresses [0] externalToken [1] fundingPool [2] feeRecipient
   * @param _reserveRatio (in PPM) which get's used in the BancorFormula contract as the connectorWeight
   * @param _gasPrice we need to set this such that everybody pays an equal amount of gas and we protect against front-running the bonding curve
   * @param _theta (in PPM) which is the percentage of worth in internal tokens of the contribution in externalTokens that get's minted to the funding pool once the hatch phase ends
   * @param _p0 the price denominated in external token of one internal token (i.e. if P0 is 10 => if you contribute 100 external tokens you get 10 internal tokens DURING the hatch phase)
   * @param _initialRaise which is the amount of external tokens that must be contributed during the hatching phase to go post-hatching phase
-  * @param _fundingPool the address of the fundingPool (can be an organization of a DAO). The fundingPool get's access to the theta * ( internal tokens worth of external tokens ) when the hatch phase ends
   * @param _friction the fraction (in PPM) that goes to the funding pool when internal tokens are burned (post-hatch)
   * @param _hatchDurationSeconds time (in seconds) by which the curve must be hatched since calling this constructor.
   * @param _hatchVestingDurationSeconds time (in seconds) defining how long after hatching finishes a hatcher won't be able to claim any tokens.
   * @param _minExternalContribution the minimum amount of external tokens that should be contributed by a hatcher
   */
   constructor(
-    address _externalToken,
+    address[3] memory _addresses,
     uint32 _reserveRatio,
     uint256 _gasPrice,
     uint256 _theta,
     uint256 _p0,
     uint256 _initialRaise,
-    address _fundingPool,
     uint256 _friction,
     uint256 _hatchDurationSeconds,
     uint256 _hatchVestingDurationSeconds,
     uint256 _minExternalContribution
   )
     public
-    mustBeNonZeroAdr(_externalToken)
-    mustBeNonZeroAdr(_fundingPool)
+    mustBeNonZeroAdr(_addresses[0])
+    mustBeNonZeroAdr(_addresses[1])
+    mustBeNonZeroAdr(_addresses[2])
     mustBeInPPM(_reserveRatio)
     mustBeInPPM(_theta)
     mustBeInPPM(_friction)
@@ -149,7 +152,8 @@ contract CommonsToken is BondingCurveToken {
     theta = _theta;
     p0 = _p0;
     initialRaise = _initialRaise;
-    fundingPool = _fundingPool;
+    fundingPool = _addresses[1];
+    feeRecipient = _addresses[2];
     friction = _friction;
 
     hatchDeadline = now + _hatchDurationSeconds;
@@ -159,7 +163,7 @@ contract CommonsToken is BondingCurveToken {
 
     minExternalContribution = _minExternalContribution;
 
-    externalToken = ERC20(_externalToken);
+    externalToken = ERC20(_addresses[0]);
   }
 
   function mint(uint256 _amount)
@@ -322,7 +326,7 @@ contract CommonsToken is BondingCurveToken {
     uint256 reimbursement = super._curvedBurn(amount);
     uint256 frictionCost = friction * reimbursement / DENOMINATOR_PPM;
     externalToken.transfer(msg.sender, reimbursement - frictionCost);
-    externalToken.transfer(fundingPool, frictionCost);
+    externalToken.transfer(feeRecipient, frictionCost);
     return reimbursement;
   }
 }

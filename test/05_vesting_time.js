@@ -11,7 +11,7 @@ const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("VestingTime", ([artist, hatcher, buyer]) => {
+contract("VestingTime", ([artist, hatcher, buyer, feeRecipient]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -38,13 +38,12 @@ contract("VestingTime", ([artist, hatcher, buyer]) => {
     artistToken = await ArtistToken.new(
       ARTIST_NAME,
       ARTIST_SYMBOL,
-      wPHT.address,
+      [wPHT.address, fundingPool.address, feeRecipient],
       RESERVE_RATIO,
       GAS_PRICE_WEI,
       THETA,
       P0,
       AMOUNT_TO_RAISE_WEI,
-      fundingPool.address,
       FRICTION,
       HATCH_DURATION_SECONDS,
       HATCH_VESTING_DURATION_SECONDS,
