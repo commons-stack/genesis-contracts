@@ -241,12 +241,11 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
 
   it('should let an Artist to allocate raised funds from the FundingPool', async () => {
     const wPHTBalance = await wPHT.balanceOf(fundingPool.address);
-    const withdrawAmountPHT = wei2pht(wPHTBalance) * ARTIST_FUNDING_POOL_WITHDRAW_RATIO;
-    const withdrawAmountWei = pht2wei(withdrawAmountPHT);
+    const withdrawAmountWei = wPHTBalance.mul(new BN(ARTIST_FUNDING_POOL_WITHDRAW_RATIO * 100)).div(new BN(100));
 
     await fundingPool.allocateFunds(artistToken.address, artistAccountant, withdrawAmountWei, { from: artist });
 
-    console.log(`Artist withdrawn ${ARTIST_FUNDING_POOL_WITHDRAW_RATIO * 100}% of tokens, ${withdrawAmountPHT} WPHT, worth ${pht2euro(withdrawAmountPHT)}€ from FundingPool to an external account`);
+    console.log(`Artist withdrawn ${ARTIST_FUNDING_POOL_WITHDRAW_RATIO * 100}% of tokens, ${wei2pht(withdrawAmountWei)} WPHT, worth ${wei2euro(withdrawAmountWei)}€ from FundingPool to an external account`);
 
     const accountantWPHTBalance = await wPHT.balanceOf(artistAccountant);
 

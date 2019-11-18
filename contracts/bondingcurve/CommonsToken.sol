@@ -199,7 +199,11 @@ contract CommonsToken is BondingCurveToken {
       _endHatchPhase();
     }
 
-    _mintInternalAndLock(msg.sender, contributed);
+    // Increase the amount paid in EXTERNAL tokens.
+    initialContributions[msg.sender].paidExternal += contributed;
+
+    // Lock the INTERNAL tokens, total is EXTERNAL amount * price of internal token during the raise.
+    initialContributions[msg.sender].lockedInternal += contributed * p0;
   }
 
   function fundsAllocated(uint256 _externalAllocated)
@@ -274,7 +278,8 @@ contract CommonsToken is BondingCurveToken {
     internal
   {
     uint256 amountFundingPoolExternal = ((initialRaise) * theta ) / DENOMINATOR_PPM; // denominated in external
-    uint256 amountReserveInternal = (initialRaise / p0) * (DENOMINATOR_PPM - theta) / DENOMINATOR_PPM; // denominated in internal
+    // FIXES: https://github.com/commons-stack/genesis-contracts/issues/16
+    // uint256 amountReserveInternal = (initialRaise / p0) * (DENOMINATOR_PPM - theta) / DENOMINATOR_PPM; // denominated in internal
 
     // _transfer(address(this), fundingPool, amount);
 
@@ -282,29 +287,14 @@ contract CommonsToken is BondingCurveToken {
     externalToken.transfer(fundingPool, amountFundingPoolExternal);
 
     // Mint INTERNAL tokens to the reserve:
-    _mint(address(this), amountReserveInternal);
+    // FIXES: https://github.com/commons-stack/genesis-contracts/issues/16
+    // _mint(address(this), amountReserveInternal);
+    _mint(address(this), initialRaise * p0);
 
     // End the hatching phase
     isHatched = true;
     // Start hatchers vesting
     hatchVestingDeadline = now + hatchVestingDurationSeconds;
-  }
-
-  // We mint to contributor account and lock the tokens.
-  // Theoretically, the price is increasing (up to P1),
-  // but since we are in the hatching phase, the actual price will stay P0.
-  // The contract will hold the locked tokens.
-  function _mintInternalAndLock(
-    address _adr,
-    uint256 _amount
-  )
-    internal
-  {
-    // Increase the amount paid in EXTERNAL tokens.
-    initialContributions[_adr].paidExternal += _amount;
-
-    // Lock the INTERNAL tokens, total is EXTERNAL amount * price of internal token during the raise.
-    initialContributions[_adr].lockedInternal += _amount * p0;
   }
 
   /**
@@ -327,6 +317,11 @@ contract CommonsToken is BondingCurveToken {
     uint256 frictionCost = friction * reimbursement / DENOMINATOR_PPM;
     externalToken.transfer(msg.sender, reimbursement - frictionCost);
     externalToken.transfer(feeRecipient, frictionCost);
+
+    if (feeRecipient != fundingPool) {
+      unlockedInternal += frictionCost / p0;
+    }
+
     return reimbursement;
   }
 }
