@@ -9,7 +9,7 @@ const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
 const DENOMINATOR_PPM = 1000000;
-contract("ArtistToken", ([hatcher1, hatcher2, lateInvestor]) => {
+contract("ArtistToken", ([lightstreams, hatcher1, hatcher2, lateInvestor]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -43,17 +43,10 @@ contract("ArtistToken", ([hatcher1, hatcher2, lateInvestor]) => {
     artistToken = await ArtistToken.new(
       "Armin Van Lightstreams",
       "AVL",
-      [wPHT.address, fundingPool.address, fundingPool.address],
+      [wPHT.address, fundingPool.address, fundingPool.address, lightstreams],
+      [GAS_PRICE_WEI, THETA, P0, AMOUNT_TO_RAISE_WEI, FRICTION, HATCH_DURATION_SECONDS, HATCH_VESTING_DURATION_SECONDS, MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI],
       RESERVE_RATIO,
-      GAS_PRICE_WEI,
-      THETA,
-      P0,
-      AMOUNT_TO_RAISE_WEI,
-      FRICTION,
-      HATCH_DURATION_SECONDS,
-      HATCH_VESTING_DURATION_SECONDS,
-      MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI,
-      { gas: 10000000 }
+      { from: lightstreams, gas: 10000000 }
     );
 
     await wPHT.deposit({

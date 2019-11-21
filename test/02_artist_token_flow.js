@@ -11,7 +11,7 @@ const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundingPoolAccountant, fundingPoolAttacker, feeRecipient]) => {
+contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundingPoolAccountant, fundingPoolAttacker, feeRecipient, lightstreams]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -47,20 +47,27 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     artistToken = await ArtistToken.new(
       ARTIST_NAME,
       ARTIST_SYMBOL,
-      [wPHT.address, fundingPool.address, feeRecipient],
+      [wPHT.address, fundingPool.address, feeRecipient, lightstreams],
+      [GAS_PRICE_WEI, THETA, P0, AMOUNT_TO_RAISE_WEI, FRICTION, HATCH_DURATION_SECONDS, HATCH_VESTING_DURATION_SECONDS, MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI],
       RESERVE_RATIO,
-      GAS_PRICE_WEI,
-      THETA,
-      P0,
-      AMOUNT_TO_RAISE_WEI,
-      FRICTION,
-      HATCH_DURATION_SECONDS,
-      HATCH_VESTING_DURATION_SECONDS,
-      MIN_REQUIRED_HATCHER_CONTRIBUTION_WEI,
       { from: artist, gas: 10000000 }
     );
 
     artistTokenSymbol = await artistToken.symbol.call();
+  });
+
+  it('should not be paused', async () => {
+    const isPaused = await artistToken.paused();
+
+    assert.isFalse(isPaused);
+  });
+
+  it('should have configured Lightstreams as a pauser', async () => {
+    const isArtistPauser = await artistToken.isPauser(artist);
+    const isLightstreamsPauser = await artistToken.isPauser(lightstreams);
+
+    assert.isFalse(isArtistPauser);
+    assert.isTrue(isLightstreamsPauser);
   });
 
   it("should have Hatchers with positive wPHT(PHT20) balances ready", async () => {
@@ -85,6 +92,14 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     const isHatched = await artistToken.isHatched();
 
     assert.isFalse(isHatched);
+  });
+
+  it('should be possible to pause and re-pause the economy', async () => {
+    await artistToken.pause({ from: lightstreams });
+    assert.isTrue(await artistToken.paused());
+
+    await artistToken.unpause({ from: lightstreams });
+    assert.isFalse(await artistToken.paused());
   });
 
   it('should end the hatching phase by contributing configured minimum amount to raise from 2 hatchers', async () => {
@@ -136,7 +151,7 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
 
   it('should create a reserve of Artist tokens', async () => {
     const tokensAmount = await artistToken.balanceOf(artistToken.address);
-    const tokensAmountExpected = pht2wei((AMOUNT_TO_RAISE_PHT / P0 ) * (1 - (THETA  / DENOMINATOR_PPM)));
+    const tokensAmountExpected = pht2wei((AMOUNT_TO_RAISE_PHT / P0 ));
 
     console.log(`Artist tokens in reserve: ${wei2pht(tokensAmount)} ${artistTokenSymbol}`);
 
@@ -386,7 +401,7 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
   });
 
   it('should be possible for hatcher to sell his claimed tokens', async () => {
-    const burnAmount = await artistToken.balanceOf(hatcher1);
+    const burnAmount = (await artistToken.balanceOf(hatcher1)).div(new BN(3, 10));
     const preBurnHatcherWPHTBalance = await wPHT.balanceOf(hatcher1);
 
     await artistToken.burn(burnAmount, {from: hatcher1, gasPrice: GAS_PRICE_WEI});
@@ -397,5 +412,65 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     console.log(`Hatcher1 sold ${wei2pht(burnAmount)} ${artistTokenSymbol} for ${wei2pht(revenue)} WPHT`);
 
     assert.isTrue(postBurnHatcherWPHTBalance.gt(preBurnHatcherWPHTBalance));
+  });
+
+  it('should be possible to transfer tokens', async () => {
+    const preBalanceHatcher1 = await artistToken.balanceOf(hatcher1);
+    const preBalanceLightstreams = await artistToken.balanceOf(lightstreams);
+
+    await artistToken.transfer(lightstreams, preBalanceHatcher1, { from: hatcher1 });
+
+    const postBalanceLightstreams = await artistToken.balanceOf(lightstreams);
+    const postBalanceLightstreamsExpected = preBalanceLightstreams.add(preBalanceHatcher1);
+
+    assert.equal(postBalanceLightstreams.toString(), postBalanceLightstreamsExpected.toString());
+  });
+
+  it('should be possible to pause the economy', async () => {
+    await artistToken.pause({ from: lightstreams });
+
+    const isPaused = await artistToken.paused();
+
+    assert.isTrue(isPaused);
+  });
+
+  it('should not be possible to mint new tokens when paused', async () => {
+    await wPHT.deposit({
+      from: buyer1,
+      value: BUYER_WPHT_PURCHASE_COST_WEI
+    });
+    await wPHT.approve(artistToken.address, BUYER_WPHT_PURCHASE_COST_WEI, {from: buyer1});
+
+    await shouldFail.reverting.withMessage(artistToken.mint(BUYER_WPHT_PURCHASE_COST_WEI, {from: buyer1, gasPrice: GAS_PRICE_WEI}), 'paused');
+  });
+
+  it('should not be possible to burn any tokens when paused', async () => {
+    const burnAmount = await artistToken.balanceOf(buyer2);
+
+    await shouldFail.reverting.withMessage(artistToken.burn(burnAmount, {from: buyer2, gasPrice: GAS_PRICE_WEI}), 'paused');
+  });
+
+  it('should not be possible to claim any tokens when paused', async () => {
+    await shouldFail.reverting.withMessage(artistToken.claimTokens({from: hatcher2}), 'paused');
+  });
+
+  it('should not be possible to withdraw any funds when paused', async () => {
+    const balance = await wPHT.balanceOf(fundingPool.address);
+
+    await shouldFail.reverting.withMessage(fundingPool.allocateFunds(artistToken.address, fundingPoolAccountant, balance, {from: artist}), 'paused');
+  });
+
+  it('should not be possible to transfer tokens when paused', async () => {
+    const preBalanceLightstreams = await artistToken.balanceOf(lightstreams);
+
+    await shouldFail.reverting.withMessage(artistToken.transfer(hatcher1, preBalanceLightstreams, { from: lightstreams }), 'paused');
+  });
+
+  it('should be possible to un-pause, resume the economy', async () => {
+    await artistToken.unpause({ from: lightstreams });
+
+    const isPaused = await artistToken.paused();
+
+    assert.isFalse(isPaused);
   });
 });

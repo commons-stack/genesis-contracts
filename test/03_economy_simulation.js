@@ -56,6 +56,7 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
   const PRINT_MARKET_ACTIVITY = process.env.PRINT_MARKET_ACTIVITY === "true";
 
   const SALE_FEE_PERCENTAGE = (FRICTION / DENOMINATOR_PPM * 100);
+  const MIN_HATCH_CONTRIBUTION_WEI = pht2wei(1);
 
   it('should print economy settings', async () => {
     console.log({
@@ -92,16 +93,9 @@ contract("EconomySimulation", ([lsAcc, artist, artistAccountant, superHatcher, h
     artistToken = await ArtistToken.new(
       ARTIST_NAME,
       ARTIST_SYMBOL,
-      [wPHT.address, fundingPool.address, feeRecipient],
+      [wPHT.address, fundingPool.address, feeRecipient, lsAcc],
+      [GAS_PRICE_WEI, THETA, P0, HATCH_LIMIT_WEI, FRICTION, HATCH_DURATION_SECONDS, HATCH_VESTING_DURATION_SECONDS, MIN_HATCH_CONTRIBUTION_WEI],
       RESERVE_RATIO,
-      GAS_PRICE_WEI,
-      THETA,
-      P0,
-      HATCH_LIMIT_WEI,
-      FRICTION,
-      HATCH_DURATION_SECONDS,
-      HATCH_VESTING_DURATION_SECONDS,
-      HATCH_LIMIT_PHT,
       { from: artist, gas: 10000000 }
     );
 

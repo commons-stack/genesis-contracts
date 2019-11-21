@@ -25,16 +25,9 @@ module.exports = async function(deployer, networks, accounts) {
     ArtistToken,
     "Armin Van Lightstreams",
     "AVL",
-    [wPHT.address, fundingPoolMockInstance.address, fundingPoolMockInstance.address],
+    [wPHT.address, fundingPoolMockInstance.address, fundingPoolMockInstance.address, accounts[0]],
+    [gasPrice, theta, p0, initialRaise, friction, hatchDurationSeconds, hatchVestingDurationSeconds, minExternalContibution],
     reserveRatio,
-    gasPrice,
-    theta,
-    p0,
-    initialRaise,
-    friction,
-    hatchDurationSeconds,
-    hatchVestingDurationSeconds,
-    minExternalContibution,
-    { gas: 20000000 }
+    { from: accounts[0], gas: 20000000 }
   );
 };
