@@ -94,7 +94,7 @@ contract("ArtistTokenFlow", ([artist, hatcher1, hatcher2, buyer1, buyer2, fundin
     assert.isFalse(isHatched);
   });
 
-  it('should be possible to pause and re-pause the economy', async () => {
+  it('should be possible to pause and un-pause the economy', async () => {
     await artistToken.pause({ from: lightstreams });
     assert.isTrue(await artistToken.paused());
 
