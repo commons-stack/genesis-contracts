@@ -61,7 +61,7 @@ contract("ArtistToken", ([lightstreams, hatcher1, hatcher2, lateInvestor]) => {
   });
 
   describe('Initial State', () => {
-    describe('When new ArtistToken is jut deployed', () => {
+    describe('When new ArtistToken is just deployed', () => {
       it("Should have no tokens created", async () => {
         let raisedExternal = await artistToken.raisedExternal();
 
