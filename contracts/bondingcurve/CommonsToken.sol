@@ -321,6 +321,10 @@ contract CommonsToken is BondingCurveToken, Pausable {
     if (feeRecipient != fundingPool) {
       unlockedInternal += frictionCost / p0;
     }
+    
+    if (unlockedInternal >= initialRaise * p0) {
+      unlockedInternal = initialRaise * p0;
+    }
 
     return reimbursement;
   }
