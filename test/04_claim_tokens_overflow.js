@@ -11,7 +11,7 @@ const FundingPool = artifacts.require("FundingPool.sol");
 const WPHT = artifacts.require("WPHT.sol");
 const ArtistToken = artifacts.require("ArtistToken.sol");
 
-contract("ClaimTokensOverflow", ([artist, hatcher, buyer]) => {
+contract("ClaimTokensOverflow", ([artist, hatcher, buyer, feeRecipient]) => {
   let fundingPool;
   let wPHT;
   let artistToken;
@@ -39,7 +39,7 @@ contract("ClaimTokensOverflow", ([artist, hatcher, buyer]) => {
     artistToken = await ArtistToken.new(
       ARTIST_NAME,
       ARTIST_SYMBOL,
-      [wPHT.address, fundingPool.address, fundingPool.address, artist],
+      [wPHT.address, fundingPool.address, feeRecipient, artist],
       [GAS_PRICE_WEI, THETA, P0, AMOUNT_TO_RAISE_WEI, FRICTION, HATCH_DURATION_SECONDS, HATCH_VESTING_DURATION_SECONDS, AMOUNT_TO_RAISE_WEI],
       RESERVE_RATIO,
       { from: artist, gas: 10000000 }
@@ -62,8 +62,13 @@ contract("ClaimTokensOverflow", ([artist, hatcher, buyer]) => {
     assert.isTrue(isHatched);
   });
 
+  it("should let artist to withdraw funds", async () => {
+    const balance = await wPHT.balanceOf(fundingPool.address);
+    await fundingPool.allocateFunds(artistToken.address, artist, balance, {from: artist });
+  });
+
   // Should increase overall economy (paidExternal * unlockedInternal) / initialRaise
-  it("should let attacker to make fundingpool rich", async () => {
+  it("should generate income for feeReipient and unlock hatcher funds", async () => {
     const buyerWei = pht2wei(AMOUNT_TO_RAISE_PHT * 100);
 
     await wPHT.deposit({ from: buyer, value: buyerWei});
@@ -75,15 +80,11 @@ contract("ClaimTokensOverflow", ([artist, hatcher, buyer]) => {
     await artistToken.burn(balance, {from: buyer, gasPrice: GAS_PRICE_WEI});
   });
 
-  it("should let artist to withdraw the hatching + burning fee funds", async () => {
-    const balance = await wPHT.balanceOf(fundingPool.address);
-    await fundingPool.allocateFunds(artistToken.address, artist, balance, {from: artist });
-  });
-
   it("a hatcher claimed tokens do not overflow after ReservePool fix", async () => {
     const contribution = await artistToken.initialContributions(hatcher);
     const lockedInternal = contribution.lockedInternal;
 
+    // Should fail as unlockedInternal what not limited to a max of initialRaise in CommonsToken._curvedBurn()
     await artistToken.claimTokens({from: hatcher});
 
     const balance = await artistToken.balanceOf(hatcher);
