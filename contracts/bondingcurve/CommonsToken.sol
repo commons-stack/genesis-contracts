@@ -13,7 +13,7 @@ contract CommonsToken is BondingCurveToken {
 
   /**PreHatchContribution keeps track of the contribution of a hatcher during the hatchin phase:
       paidExternal: the amount contributed during the hatching phase, denominated in external currency
-      lockedInternal: paidExternal / p0 = the amount of internal tokens represented by paidExternal.
+      lockedInternal: paidExternal * p0 = the amount of internal tokens represented by paidExternal.
         These tokens are unlocked post-hatch according to a vesting policy. Post hatch, we decrease lockedInternal to 0
   */
   struct PreHatchContribution {
@@ -193,7 +193,7 @@ contract CommonsToken is BondingCurveToken {
     // We should only update the total unlocked when it is less than 100%.
 
     // TODO: add vesting period ended flag and optimise check.
-    unlockedInternal += _externalAllocated / p0;
+    unlockedInternal += _externalAllocated * p0;
     if (unlockedInternal >= initialRaise * p0) {
       unlockedInternal = initialRaise * p0;
     }
@@ -212,7 +212,7 @@ contract CommonsToken is BondingCurveToken {
     // The total amount of INTERNAL tokens that should have been unlocked.
     uint256 shouldHaveUnlockedInternal = (paidExternal * unlockedInternal) / initialRaise;
     // The amount of INTERNAL tokens that was already unlocked.
-    uint256 previouslyUnlockedInternal = (paidExternal / p0) - lockedInternal;
+    uint256 previouslyUnlockedInternal = (paidExternal * p0) - lockedInternal;
     // The amount that can be unlocked.
     uint256 toUnlock = shouldHaveUnlockedInternal - previouslyUnlockedInternal;
 
