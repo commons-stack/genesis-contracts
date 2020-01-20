@@ -255,15 +255,13 @@ contract CommonsToken is BondingCurveToken {
     internal
   {
     uint256 amountFundingPoolExternal = ((initialRaise) * theta ) / DENOMINATOR_PPM; // denominated in external
-    uint256 amountReserveInternal = (initialRaise / p0) * (DENOMINATOR_PPM - theta) / DENOMINATOR_PPM; // denominated in internal
-
     // _transfer(address(this), fundingPool, amount);
 
     // transfer external tokens to the funding pool:
     externalToken.transfer(fundingPool, amountFundingPoolExternal);
 
     // Mint INTERNAL tokens to the reserve:
-    _mint(address(this), amountReserveInternal);
+    _mint(address(this), initialRaise * p0);
 
     // End the hatching phase.
     isHatched = true;
